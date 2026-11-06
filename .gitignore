@@ -1,6 +1,25 @@
-﻿.venv/
+# Python & uv
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Django & Environment
 .env
+*.log
 db.sqlite3
+db.sqlite3-journal
 media/
+staticfiles/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
