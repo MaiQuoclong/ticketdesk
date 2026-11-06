@@ -1,0 +1,630 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --mv-crimson: #dc1f52;
+  --mv-crimson-dark: #b91542;
+  --mv-crimson-soft: #fde8ee;
+  --mv-amber: #f7b731;
+  --mv-amber-bg: #f3b52c;
+  --mv-purple: #8a2be2;
+  --mv-deep-purple: #281147;
+  --mv-green: #00e075;
+  --mv-surface: #ffffff;
+  --mv-bg: #f6f7fb;
+  --mv-text: #22252a;
+  --mv-muted: #8c939e;
+  --mv-border: #eceef2;
+  --mv-shadow: 0 14px 36px rgba(28, 15, 43, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--mv-bg);
+  color: var(--mv-text);
+  line-height: 1.55;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Polygonal SVG Background (MovieValley signature style) */
+.mv-poly-bg {
+  background-color: #3b1254;
+  background-image:
+     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop offset='0%25' stop-color='%23230b3b'/%3E%3Cstop offset='45%25' stop-color='%239e1952'/%3E%3Cstop offset='80%25' stop-color='%23e03b44'/%3E%3Cstop offset='100%25' stop-color='%23f7a828'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='600' fill='url(%23g)'/%3E%3Cpolygon points='0,0 280,0 140,220' fill='%237b164e' fill-opacity='0.45'/%3E%3Cpolygon points='280,0 560,0 420,190' fill='%23d82b49' fill-opacity='0.35'/%3E%3Cpolygon points='560,0 800,0 800,240 420,190' fill='%23f79421' fill-opacity='0.45'/%3E%3Cpolygon points='0,0 140,220 0,390' fill='%234a1147' fill-opacity='0.5'/%3E%3Cpolygon points='140,220 420,190 310,410' fill='%23b51d4e' fill-opacity='0.35'/%3E%3Cpolygon points='420,190 800,240 610,430' fill='%23e44d3a' fill-opacity='0.35'/%3E%3Cpolygon points='0,390 310,410 150,600 0,600' fill='%23240b3b' fill-opacity='0.65'/%3E%3Cpolygon points='310,410 610,430 480,600 150,600' fill='%23471254' fill-opacity='0.55'/%3E%3Cpolygon points='610,430 800,240 800,600 480,600' fill='%236c1657' fill-opacity='0.45'/%3E%3C/svg%3E");
+  background-size: cover;
+  background-position: center;
+}
+
+/* Top Crimson App Bar */
+.mv-navbar {
+  background: var(--mv-crimson);
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(220, 31, 82, 0.28);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.mv-navbar-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mv-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.35rem;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+}
+
+.mv-brand strong {
+  font-weight: 700;
+}
+
+.mv-brand-badge {
+  background: var(--mv-amber);
+  color: #1f1f1f;
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 4px 8px 8px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+}
+
+.mv-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.mv-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.mv-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.mv-avatar-lg {
+  width: 58px;
+  height: 58px;
+  font-size: 1.2rem;
+  border-width: 2.5px;
+}
+
+.mv-role-tag {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* Container & Layout */
+.mv-container {
+  max-width: 1180px;
+  width: 100%;
+  margin: 28px auto 48px;
+  padding: 0 24px;
+  flex: 1;
+}
+
+/* Cards */
+.mv-card {
+  background: var(--mv-surface);
+  border-radius: 6px;
+  box-shadow: var(--mv-shadow);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.mv-card-header-crimson {
+  background: var(--mv-crimson);
+  color: #fff;
+  padding: 20px 26px;
+}
+
+.mv-card-header-crimson h2 {
+  font-weight: 300;
+  font-size: 1.35rem;
+}
+
+.mv-card-body {
+  padding: 26px;
+}
+
+/* Yellow Ribbon Score/Priority Badge (Exact MovieValley IMDb 8.7 / 9 ribbon) */
+.mv-ribbon {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--mv-amber);
+  color: #1c1d21;
+  min-width: 44px;
+  padding: 6px 10px 13px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.mv-ribbon-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+}
+
+.mv-ribbon-val {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+/* Crimson Agent Strip ("People you may know" style) */
+.mv-agent-strip {
+  background: var(--mv-crimson);
+  color: #fff;
+  padding: 22px 26px;
+}
+
+.mv-agent-strip-title {
+  font-weight: 300;
+  font-size: 1.15rem;
+  margin-bottom: 16px;
+  opacity: 0.95;
+}
+
+.mv-agent-list {
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.mv-agent-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-width: 82px;
+}
+
+.mv-agent-name {
+  margin-top: 8px;
+  font-size: 0.82rem;
+  font-weight: 400;
+  opacity: 0.95;
+}
+
+.mv-agent-sub {
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
+/* Tabs Navigation (Movies / TV series / Watch list style) */
+.mv-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--mv-border);
+  padding: 0 26px;
+  background: #fff;
+  overflow-x: auto;
+}
+
+.mv-tab {
+  padding: 15px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--mv-text);
+  border-bottom: 3px solid transparent;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.mv-tab:hover {
+  color: var(--mv-crimson);
+}
+
+.mv-tab.active {
+  color: var(--mv-crimson);
+  border-bottom-color: var(--mv-crimson);
+}
+
+/* Search & Filter Bar ("Search people / The|" style) */
+.mv-search-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  padding: 18px 26px;
+  background: #fff;
+  border-bottom: 1px solid var(--mv-border);
+}
+
+.mv-search-input {
+  flex: 1;
+  min-width: 220px;
+  border: none;
+  border-bottom: 2px solid var(--mv-border);
+  padding: 10px 4px;
+  font-size: 1.15rem;
+  font-weight: 300;
+  font-family: inherit;
+  color: var(--mv-text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.mv-search-input:focus {
+  border-bottom-color: var(--mv-crimson);
+}
+
+/* Dual Progress Bar (Avengers Budget/Revenue Green & Purple style) */
+.mv-dual-progress {
+  height: 6px;
+  width: 100%;
+  background: var(--mv-purple);
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  margin: 14px 0;
+}
+
+.mv-dual-progress-fill {
+  background: var(--mv-green);
+  height: 100%;
+  transition: width 0.35s ease;
+}
+
+.mv-stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 36px;
+  align-items: center;
+}
+
+.mv-stat-num {
+  font-size: 1.55rem;
+  font-weight: 600;
+  color: var(--mv-text);
+}
+
+.mv-stat-legend {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+  color: var(--mv-muted);
+  margin-top: 2px;
+}
+
+.mv-dot-green {
+  width: 9px;
+  height: 9px;
+  background: var(--mv-green);
+  display: inline-block;
+}
+
+.mv-dot-purple {
+  width: 9px;
+  height: 9px;
+  background: var(--mv-purple);
+  display: inline-block;
+}
+
+/* Buttons */
+.mv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  font-family: inherit;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.mv-btn-crimson {
+  background: var(--mv-crimson);
+  color: #fff;
+}
+
+.mv-btn-crimson:hover {
+  background: var(--mv-crimson-dark);
+}
+
+.mv-btn-outline-light {
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.mv-btn-outline-light:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: #fff;
+}
+
+.mv-btn-ghost {
+  background: #f1f3f7;
+  color: var(--mv-text);
+}
+
+.mv-btn-ghost:hover {
+  background: #e4e7ee;
+}
+
+/* Status Pill */
+.mv-status {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--mv-crimson);
+}
+
+.mv-status-new { color: var(--mv-crimson); }
+.mv-status-in_progress { color: #d97706; }
+.mv-status-resolved { color: #059669; }
+.mv-status-closed { color: var(--mv-muted); }
+
+/* Ticket Feed Row */
+.mv-ticket-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 26px;
+  border-bottom: 1px solid var(--mv-border);
+  transition: background 0.15s ease;
+}
+
+.mv-ticket-item:hover {
+  background: #fafbfe;
+}
+
+.mv-ticket-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex: 1;
+}
+
+.mv-ticket-title {
+  font-size: 1.08rem;
+  font-weight: 400;
+  color: var(--mv-text);
+  margin-bottom: 4px;
+}
+
+.mv-ticket-title:hover {
+  color: var(--mv-crimson);
+}
+
+.mv-ticket-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 0.8rem;
+  color: var(--mv-muted);
+}
+
+/* Forms */
+.mv-form-group {
+  margin-bottom: 20px;
+}
+
+.mv-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--mv-muted);
+  margin-bottom: 8px;
+}
+
+.mv-input,
+.mv-select,
+.mv-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--mv-border);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--mv-text);
+  background: #fcfcfd;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.mv-input:focus,
+.mv-select:focus,
+.mv-textarea:focus {
+  border-color: var(--mv-crimson);
+  background: #fff;
+}
+
+/* Toggle Switch (MovieValley "Share on Facebook/Instagram" crimson toggle) */
+.mv-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1px solid var(--mv-border);
+  border-bottom: 1px solid var(--mv-border);
+  margin-bottom: 16px;
+}
+
+.mv-toggle-input {
+  appearance: none;
+  width: 44px;
+  height: 24px;
+  background: #ccc;
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.2s;
+}
+
+.mv-toggle-input::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+
+.mv-toggle-input:checked {
+  background: var(--mv-crimson);
+}
+
+.mv-toggle-input:checked::after {
+  transform: translateX(20px);
+}
+
+/* Alert messages */
+.mv-alert {
+  padding: 13px 20px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  border-left: 4px solid var(--mv-crimson);
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+/* Login Screen (Full MovieValley polygonal card) */
+.mv-login-wrapper {
+  min-height: calc(100vh - 64px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background: linear-gradient(135deg, #f7b731 0%, #f3a125 100%);
+}
+
+.mv-login-card {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 6px;
+  padding: 52px 38px 42px;
+  color: #fff;
+  box-shadow: 0 24px 60px rgba(32, 10, 48, 0.45);
+  text-align: center;
+}
+
+.mv-login-title {
+  font-size: 2.1rem;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  margin-bottom: 8px;
+}
+
+.mv-login-sub {
+  font-size: 0.88rem;
+  font-weight: 300;
+  opacity: 0.88;
+  margin-bottom: 38px;
+}
+
+.mv-login-field {
+  margin-bottom: 22px;
+  text-align: left;
+}
+
+.mv-login-field input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.45);
+  padding: 10px 2px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.mv-login-field input::placeholder {
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 300;
+}
+
+.mv-login-field input:focus {
+  border-bottom-color: #fff;
+}
+
+.mv-login-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 32px;
+}
+
+/* Grid 2 columns for Detail View */
+.mv-detail-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 860px) {
+  .mv-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Crimson Footer Bar */
+.mv-footer {
+  background: var(--mv-crimson);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 14px 24px;
+  text-align: center;
+  font-size: 0.82rem;
+}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Đăng nhập{% endblock %}
+
+{% block main_container %}
+<div class="mv-login-wrapper">
+  <div class="mv-login-card mv-poly-bg">
+    <h1 class="mv-login-title">TicketDesk</h1>
+    <p class="mv-login-sub">
+      Hệ thống tiếp nhận và xử lý yêu cầu hỗ trợ kỹ thuật nội bộ nhanh chóng, minh bạch.
+    </p>
+
+    {% if form.errors %}
+      <div style="background: rgba(220, 31, 82, 0.35); border: 1px solid rgba(255,255,255,0.4); padding: 10px 14px; border-radius: 4px; margin-bottom: 22px; font-size: 0.85rem;">
+        Tài khoản hoặc mật khẩu không chính xác. Vui lòng thử lại.
+      </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="mv-login-field">
+        <input type="text" name="username" placeholder="Tên đăng nhập (Username)" required autofocus>
+      </div>
+      <div class="mv-login-field">
+        <input type="password" name="password" placeholder="Mật khẩu (Password)" required>
+      </div>
+
+      <div class="mv-login-actions">
+        <a href="/admin/" class="mv-btn mv-btn-outline-light">Trang Admin</a>
+        <button type="submit" class="mv-btn mv-btn-crimson">Đăng nhập</button>
+      </div>
+    </form>
+
+    <div style="margin-top: 30px; font-size: 0.78rem; opacity: 0.82; line-height: 1.6;">
+      <strong>Tài khoản mẫu (mật khẩu: <code>matkhau123</code>):</strong><br>
+      Quản lý: <code>quanly01</code> · Hỗ trợ: <code>agent01</code> · Khách: <code>khachhang01</code>
+    </div>
+  </div>
+</div>
+{% endblock %}
