@@ -1,0 +1,26 @@
+[project]
+name = "ticketdesk"
+version = "0.1.0"
+description = "Hệ thống tiếp nhận và xử lý yêu cầu hỗ trợ nội bộ (TicketDesk)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.0.0",
+    "pytest>=8.3.0",
+    "ruff>=0.6.9",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+python_files = ["test_*.py"]
+addopts = "-q"
