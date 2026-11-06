@@ -5,31 +5,62 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}TicketDesk{% endblock %} · Rainscales</title>
-  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=4">
 </head>
 <body>
   <header class="mv-navbar">
     <div class="mv-navbar-inner">
+      <!-- Logo bên trái -->
       <a href="{% url 'tickets:list' %}" class="mv-brand">
         <span class="mv-brand-badge">TD</span>
         <span><strong>Ticket</strong>Desk</span>
       </a>
 
+      <!-- Menu điều hướng ở giữa, ngăn cách từng mục bằng vạch trắng -->
+      {% if user.is_authenticated %}
+        <nav class="mv-nav-menu">
+          <a href="{% url 'tickets:list' %}" class="mv-nav-link">
+            Danh sách Ticket
+          </a>
+          {% if user.role == 'manager' or user.is_staff %}
+            <span class="mv-nav-divider"></span>
+            <a href="{% url 'tickets:manage_users' %}" class="mv-nav-link">
+              Người dùng &amp; Vai trò
+            </a>
+            <span class="mv-nav-divider"></span>
+            <a href="{% url 'tickets:manage_categories' %}" class="mv-nav-link">
+              Danh mục sự cố
+            </a>
+            <span class="mv-nav-divider"></span>
+            <a href="{% url 'tickets:manage_history' %}" class="mv-nav-link">
+              Nhật ký hệ thống
+            </a>
+            <span class="mv-nav-divider"></span>
+            <a href="/admin/" class="mv-nav-link">
+              Django Admin
+            </a>
+          {% endif %}
+        </nav>
+      {% endif %}
+
+      <!-- Cụm thao tác & tài khoản ở bên phải -->
       <div class="mv-nav-actions">
         {% if user.is_authenticated %}
           <a href="{% url 'tickets:create' %}" class="mv-btn mv-btn-outline-light">
             + Tạo Ticket
           </a>
+          <span class="mv-nav-divider"></span>
           <div class="mv-user-pill">
             <span class="mv-avatar">{{ user.username|slice:":2" }}</span>
-            <div>
-              <div style="font-size: 0.85rem; font-weight: 600;">{{ user.username }}</div>
+            <div class="mv-user-info">
+              <span class="mv-user-name">{{ user.username }}</span>
               <span class="mv-role-tag">{{ user.get_role_display }}</span>
             </div>
           </div>
-          <form method="post" action="{% url 'accounts:logout' %}" style="display:inline;">
+          <span class="mv-nav-divider"></span>
+          <form method="post" action="{% url 'accounts:logout' %}" style="display:inline; margin:0;">
             {% csrf_token %}
-            <button type="submit" class="mv-btn mv-btn-outline-light" style="padding: 7px 14px; font-size: 0.8rem;">
+            <button type="submit" class="mv-btn mv-btn-outline-light">
               Đăng xuất
             </button>
           </form>

@@ -1,9 +1,9 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count, Q
+from django.db.models import Count, ProtectedError, Q
 from django.http import Http404, HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
@@ -11,7 +11,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from apps.accounts.models import User
 
 from .forms import CommentForm, TicketForm
-from .models import Category, Ticket
+from .models import Category, Ticket, TicketHistory
 from .services import (
     TicketServiceError,
     add_comment,
@@ -190,3 +190,126 @@ def ticket_comment_view(request: HttpRequest, pk) -> HttpResponse:
     else:
         messages.error(request, "Nội dung bình luận không hợp lệ.")
     return redirect("tickets:detail", pk=pk)
+
+
+def _check_manager(request: HttpRequest) -> bool:
+    return request.user.is_authenticated and (
+        request.user.role == User.Role.MANAGER or request.user.is_staff
+    )
+
+
+@login_required
+def manage_users_view(request: HttpRequest) -> HttpResponse:
+    if not _check_manager(request):
+        messages.error(request, "Chỉ Quản lý hoặc Admin mới có quyền quản lý người dùng.")
+        return redirect("tickets:list")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "create_user":
+            username = (request.POST.get("username") or "").strip()
+            email = (request.POST.get("email") or "").strip()
+            password = request.POST.get("password") or ""
+            role = request.POST.get("role") or User.Role.CUSTOMER
+            if not username or not password:
+                messages.error(request, "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.")
+            elif User.objects.filter(username=username).exists():
+                messages.error(request, f"Tài khoản '{username}' đã tồn tại.")
+            else:
+                User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                    role=role if role in User.Role.values else User.Role.CUSTOMER,
+                    is_staff=(role == User.Role.MANAGER),
+                )
+                messages.success(request, f"Đã tạo tài khoản '{username}' thành công!")
+        elif action == "update_user":
+            user_id = request.POST.get("user_id")
+            target = get_object_or_404(User, pk=user_id)
+            new_role = request.POST.get("role")
+            is_active = request.POST.get("is_active") == "on"
+            if new_role in User.Role.values:
+                target.role = new_role
+            if target != request.user:
+                target.is_active = is_active
+            target.save(update_fields=["role", "is_active"])
+            messages.success(request, f"Đã cập nhật quyền cho tài khoản '{target.username}'.")
+        return redirect("tickets:manage_users")
+
+    users = User.objects.annotate(
+        created_count=Count("created_tickets", distinct=True),
+        assigned_count=Count("assigned_tickets", distinct=True),
+    ).order_by("-date_joined")
+    return render(
+        request,
+        "tickets/manage_users.html",
+        {"users_list": users, "role_choices": User.Role.choices},
+    )
+
+
+@login_required
+def manage_categories_view(request: HttpRequest) -> HttpResponse:
+    if not _check_manager(request):
+        messages.error(request, "Chỉ Quản lý hoặc Admin mới có quyền quản lý danh mục.")
+        return redirect("tickets:list")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "create":
+            name = (request.POST.get("name") or "").strip()
+            description = (request.POST.get("description") or "").strip()
+            if not name:
+                messages.error(request, "Tên danh mục không được để trống.")
+            elif Category.objects.filter(name__iexact=name).exists():
+                messages.error(request, f"Danh mục '{name}' đã tồn tại.")
+            else:
+                Category.objects.create(name=name, description=description)
+                messages.success(request, f"Đã thêm danh mục '{name}'.")
+        elif action == "update":
+            cat = get_object_or_404(Category, pk=request.POST.get("category_id"))
+            name = (request.POST.get("name") or "").strip()
+            description = (request.POST.get("description") or "").strip()
+            if name:
+                cat.name = name
+                cat.description = description
+                cat.save(update_fields=["name", "description"])
+                messages.success(request, f"Đã cập nhật danh mục '{cat.name}'.")
+        elif action == "delete":
+            cat = get_object_or_404(Category, pk=request.POST.get("category_id"))
+            try:
+                cat_name = cat.name
+                cat.delete()
+                messages.success(request, f"Đã xóa danh mục '{cat_name}'.")
+            except ProtectedError:
+                messages.error(
+                    request,
+                    f"Không thể xóa danh mục '{cat.name}' vì đang có ticket "
+                    "tham chiếu (ràng buộc PROTECT).",
+                )
+        return redirect("tickets:manage_categories")
+
+    categories = Category.objects.annotate(ticket_count=Count("tickets")).order_by("name")
+    return render(request, "tickets/manage_categories.html", {"categories": categories})
+
+
+@login_required
+def manage_history_view(request: HttpRequest) -> HttpResponse:
+    if not _check_manager(request):
+        messages.error(request, "Chỉ Quản lý hoặc Admin mới có quyền tra cứu nhật ký hệ thống.")
+        return redirect("tickets:list")
+
+    q = (request.GET.get("q") or "").strip()
+    histories = TicketHistory.objects.select_related("ticket", "actor").order_by("-created_at")
+    if q:
+        histories = histories.filter(
+            Q(ticket__title__icontains=q)
+            | Q(actor__username__icontains=q)
+            | Q(field__icontains=q)
+            | Q(new_value__icontains=q)
+        )
+    return render(
+        request,
+        "tickets/manage_history.html",
+        {"histories": histories[:100], "current_q": q},
+    )
