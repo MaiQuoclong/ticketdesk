@@ -1,0 +1,70 @@
+// Lược đồ Cơ sở dữ liệu TicketDesk (ERD v1 — Tuần 3)
+// Chuẩn hóa 3NF, khóa chính UUID, thời gian TIMESTAMPTZ
+
+Table accounts {
+  id uuid [pk]
+  username varchar(150) [unique, not null]
+  email varchar(254) [unique, not null]
+  password varchar(128) [not null]
+  role varchar(20) [not null, default: 'CUSTOMER', note: 'CUSTOMER | AGENT | MANAGER']
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null]
+}
+
+Table refreshtokens {
+  id uuid [pk]
+  user_id uuid [not null, ref: > accounts.id]
+  token text [unique, not null]
+  expires_at timestamptz [not null]
+  is_revoked boolean [not null, default: false]
+  created_at timestamptz [not null]
+}
+
+Table categories {
+  id uuid [pk]
+  name varchar(100) [unique, not null]
+  description text
+}
+
+Table tickets {
+  id uuid [pk]
+  title varchar(200) [not null]
+  description text [not null]
+  status varchar(20) [not null, default: 'OPEN', note: 'OPEN | ASSIGNED | IN_PROGRESS | RESOLVED | CLOSED']
+  priority int [not null, default: 2, note: '1: Thấp | 2: Trung bình | 3: Cao']
+  category_id uuid [not null, ref: > categories.id]
+  created_by uuid [not null, ref: > accounts.id]
+  assignee_id uuid [null, ref: > accounts.id]
+  resolved_at timestamptz [null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table comments {
+  id uuid [pk]
+  ticket_id uuid [not null, ref: > tickets.id]
+  author_id uuid [not null, ref: > accounts.id]
+  content text [not null]
+  is_internal boolean [not null, default: false]
+  created_at timestamptz [not null]
+}
+
+Table attachments {
+  id uuid [pk]
+  ticket_id uuid [not null, ref: > tickets.id]
+  uploaded_by uuid [null, ref: > accounts.id]
+  file varchar(255) [not null]
+  original_name varchar(255) [not null]
+  size int [not null, note: 'Kích thước tệp tính bằng byte (tối đa 5MB)']
+  created_at timestamptz [not null]
+}
+
+Table ticket_histories {
+  id uuid [pk]
+  ticket_id uuid [not null, ref: > tickets.id]
+  actor_id uuid [null, ref: > accounts.id]
+  field varchar(50) [not null]
+  old_value text
+  new_value text
+  created_at timestamptz [not null]
+}
