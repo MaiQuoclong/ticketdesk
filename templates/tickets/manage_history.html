@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Nhật ký hệ thống (Audit Trail){% endblock %}
+
+{% block content %}
+<div class="mv-card">
+  <div class="mv-card-header-crimson" style="display: flex; justify-content: space-between; align-items: center;">
+    <h2>Tra cứu Nhật ký thay đổi Ticket (Audit Trail — Chỉ đọc)</h2>
+    <span class="mv-brand-badge">LOG</span>
+  </div>
+
+  <form method="get" class="mv-search-bar">
+    <input
+      type="search"
+      name="q"
+      value="{{ current_q }}"
+      class="mv-search-input"
+      placeholder="Tìm theo tên người thực hiện, tiêu đề ticket, trường thay đổi..."
+    >
+    <button type="submit" class="mv-btn mv-btn-crimson">Tra cứu</button>
+    {% if current_q %}
+      <a href="{% url 'tickets:manage_history' %}" class="mv-btn mv-btn-ghost">Xóa lọc</a>
+    {% endif %}
+  </form>
+
+  <div>
+    {% for h in histories %}
+      <div class="mv-ticket-item">
+        <div class="mv-ticket-main" style="align-items: center;">
+          <span class="mv-avatar" style="background: var(--mv-crimson);">
+            {{ h.actor.username|default:"HT"|slice:":2" }}
+          </span>
+          <div>
+            <div style="font-size: 0.96rem;">
+              <strong>{{ h.actor.username|default:"Hệ thống" }}</strong>
+              đã thay đổi <strong>{{ h.field }}</strong> trên ticket
+              <a href="{% url 'tickets:detail' h.ticket.pk %}" style="color: var(--mv-crimson); font-weight: 600;">
+                {{ h.ticket.short_id }} — {{ h.ticket.title }}
+              </a>
+            </div>
+            <div style="font-size: 0.88rem; margin-top: 4px;">
+              Giá trị cũ: <code style="background: #f1f3f7; padding: 2px 6px; border-radius: 3px;">{{ h.old_value }}</code>
+              &nbsp;→&nbsp;
+              Giá trị mới: <strong style="color: var(--mv-crimson);">{{ h.new_value }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div style="font-size: 0.82rem; color: var(--mv-muted); white-space: nowrap;">
+          {{ h.created_at|date:"d/m/Y H:i:s" }}
+        </div>
+      </div>
+    {% empty %}
+      <div style="padding: 42px; text-align: center; color: var(--mv-muted);">
+        Chưa có bản ghi lịch sử nào khớp với điều kiện tra cứu.
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Quản lý Người dùng & Phân vai trò{% endblock %}
+
+{% block content %}
+<div class="mv-detail-grid">
+  <!-- Danh sách tài khoản và phân vai trò -->
+  <div>
+    <div class="mv-card">
+      <div class="mv-card-header-crimson">
+        <h2>Quản lý Người dùng & Phân quyền Vai trò ({{ users_list|length }})</h2>
+      </div>
+      <div>
+        {% for u in users_list %}
+          <form method="post" class="mv-ticket-item" style="flex-wrap: wrap;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_user">
+            <input type="hidden" name="user_id" value="{{ u.pk }}">
+
+            <div class="mv-ticket-main" style="align-items: center;">
+              <span class="mv-avatar" style="background: var(--mv-crimson);">{{ u.username|slice:":2" }}</span>
+              <div>
+                <div style="font-size: 1rem; font-weight: 600;">
+                  {{ u.username }}
+                  {% if u.is_superuser %}
+                    <span style="background: var(--mv-amber); color: #1f1f1f; font-size: 0.68rem; padding: 2px 6px; border-radius: 3px; margin-left: 6px;">SUPERUSER</span>
+                  {% endif %}
+                </div>
+                <div class="mv-ticket-meta">
+                  <span>Email: {{ u.email|default:"Chưa cập nhật" }}</span>
+                  <span>Đã tạo: <strong>{{ u.created_count }}</strong> ticket</span>
+                  <span>Được gán: <strong>{{ u.assigned_count }}</strong> ticket</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <select name="role" class="mv-select" style="width: auto; min-width: 165px; padding: 8px 12px;">
+                {% for code, label in role_choices %}
+                  <option value="{{ code }}" {% if u.role == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; cursor: pointer;" title="Bật/tắt hoạt động tài khoản">
+                <input type="checkbox" name="is_active" class="mv-toggle-input" {% if u.is_active %}checked{% endif %} {% if u == user %}disabled{% endif %}>
+                <span>Hoạt động</span>
+              </label>
+
+              <button type="submit" class="mv-btn mv-btn-crimson" style="padding: 8px 16px; font-size: 0.82rem;">
+                Lưu
+              </button>
+            </div>
+          </form>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Cột phải: Thêm tài khoản mới -->
+  <div>
+    <div class="mv-card">
+      <div class="mv-card-header-crimson">
+        <h2>+ Tạo tài khoản mới</h2>
+      </div>
+      <div class="mv-card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="create_user">
+
+          <div class="mv-form-group">
+            <label class="mv-label">Tên đăng nhập (Username)</label>
+            <input type="text" name="username" class="mv-input" placeholder="Ví dụ: agent03" required>
+          </div>
+
+          <div class="mv-form-group">
+            <label class="mv-label">Email</label>
+            <input type="email" name="email" class="mv-input" placeholder="agent03@rainscales.com">
+          </div>
+
+          <div class="mv-form-group">
+            <label class="mv-label">Vai trò (Role)</label>
+            <select name="role" class="mv-select">
+              {% for code, label in role_choices %}
+                <option value="{{ code }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mv-form-group">
+            <label class="mv-label">Mật khẩu khởi tạo</label>
+            <input type="password" name="password" class="mv-input" placeholder="Nhập mật khẩu..." required>
+          </div>
+
+          <button type="submit" class="mv-btn mv-btn-crimson" style="width: 100%;">
+            Tạo người dùng
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

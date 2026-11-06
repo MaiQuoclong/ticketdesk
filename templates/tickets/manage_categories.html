@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Quản lý Danh mục sự cố{% endblock %}
+
+{% block content %}
+<div class="mv-detail-grid">
+  <!-- Danh sách Danh mục sự cố -->
+  <div>
+    <div class="mv-card">
+      <div class="mv-card-header-crimson">
+        <h2>Danh mục sự cố hiện có ({{ categories|length }})</h2>
+      </div>
+      <div>
+        {% for cat in categories %}
+          <div class="mv-ticket-item" style="flex-wrap: wrap;">
+            <form method="post" style="display: flex; flex: 1; gap: 12px; align-items: center; flex-wrap: wrap;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="update">
+              <input type="hidden" name="category_id" value="{{ cat.pk }}">
+
+              <div class="mv-ribbon">
+                <span class="mv-ribbon-label">TICKETS</span>
+                <span class="mv-ribbon-val">{{ cat.ticket_count }}</span>
+              </div>
+
+              <div style="flex: 1; min-width: 180px;">
+                <input type="text" name="name" value="{{ cat.name }}" class="mv-input" style="font-weight: 600; margin-bottom: 6px; padding: 7px 10px;" required>
+                <input type="text" name="description" value="{{ cat.description }}" class="mv-input" placeholder="Mô tả danh mục..." style="font-size: 0.85rem; padding: 6px 10px;">
+              </div>
+
+              <button type="submit" class="mv-btn mv-btn-crimson" style="padding: 8px 16px; font-size: 0.82rem;">
+                Cập nhật
+              </button>
+            </form>
+
+            <form method="post" onsubmit="return confirm('Bạn có chắc muốn xóa danh mục này?');">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="category_id" value="{{ cat.pk }}">
+              <button type="submit" class="mv-btn mv-btn-ghost" style="padding: 8px 14px; font-size: 0.82rem; color: var(--mv-crimson);">
+                Xóa
+              </button>
+            </form>
+          </div>
+        {% empty %}
+          <div style="padding: 32px; text-align: center; color: var(--mv-muted);">
+            Chưa có danh mục sự cố nào.
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Cột phải: Thêm danh mục sự cố mới -->
+  <div>
+    <div class="mv-card">
+      <div class="mv-card-header-crimson">
+        <h2>+ Thêm danh mục sự cố</h2>
+      </div>
+      <div class="mv-card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="create">
+
+          <div class="mv-form-group">
+            <label class="mv-label">Tên danh mục</label>
+            <input type="text" name="name" class="mv-input" placeholder="Ví dụ: Thiết bị văn phòng" required>
+          </div>
+
+          <div class="mv-form-group">
+            <label class="mv-label">Mô tả chi tiết</label>
+            <textarea name="description" class="mv-textarea" rows="3" placeholder="Mô tả phạm vi sự cố của danh mục..."></textarea>
+          </div>
+
+          <button type="submit" class="mv-btn mv-btn-crimson" style="width: 100%;">
+            Thêm danh mục
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
