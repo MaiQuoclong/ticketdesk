@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Danh sách Ticket{% endblock %}
+
+{% block content %}
+<div class="mv-card">
+  <!-- Thanh tìm kiếm nhanh ở trên cùng (giống "Search people" trong mẫu UI) -->
+  <form method="get" class="mv-search-bar">
+    <input
+      type="search"
+      name="q"
+      value="{{ current_q }}"
+      class="mv-search-input"
+      placeholder="Tìm kiếm ticket theo tiêu đề hoặc mô tả..."
+    >
+    <select name="priority" class="mv-select" style="width: auto; min-width: 150px;">
+      <option value="">Tất cả độ ưu tiên</option>
+      {% for val, label in priority_choices %}
+        <option value="{{ val }}" {% if current_priority == val|stringformat:"s" %}selected{% endif %}>
+          Ưu tiên: {{ label }}
+        </option>
+      {% endfor %}
+    </select>
+    {% if current_status %}
+      <input type="hidden" name="status" value="{{ current_status }}">
+    {% endif %}
+    <button type="submit" class="mv-btn mv-btn-crimson">Lọc kết quả</button>
+    {% if current_q or current_priority or current_status %}
+      <a href="{% url 'tickets:list' %}" class="mv-btn mv-btn-ghost">Xóa lọc</a>
+    {% endif %}
+  </form>
+
+  <!-- Dải nhân viên hỗ trợ trực tuyến (giống khối đỏ hồng "People you may know") -->
+  <div class="mv-agent-strip">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <div class="mv-agent-strip-title">Đội ngũ kỹ thuật viên hỗ trợ (IT Helpdesk)</div>
+        <div class="mv-agent-list">
+          {% for agent in agents %}
+            <div class="mv-agent-item">
+              <span class="mv-avatar">{{ agent.username|slice:":2" }}</span>
+              <span class="mv-agent-name">{{ agent.username }}</span>
+              <span class="mv-agent-sub">Support Agent</span>
+            </div>
+          {% empty %}
+            <span style="font-size: 0.85rem; opacity: 0.85;">Chưa có nhân viên hỗ trợ mẫu.</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 28px; text-align: center;">
+        <div>
+          <div style="font-size: 0.75rem; opacity: 0.8;">Tổng Ticket</div>
+          <div style="font-size: 1.55rem; font-weight: 600;">{{ stats.total }}</div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; opacity: 0.8;">Đang xử lý</div>
+          <div style="font-size: 1.55rem; font-weight: 600;">{{ stats.in_progress }}</div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; opacity: 0.8;">Đã hoàn tất</div>
+          <div style="font-size: 1.55rem; font-weight: 600;">{{ stats.resolved }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Thanh tiến độ xanh lá / tím (giống khối Budget / Revenue trong mẫu UI) -->
+  <div style="padding: 18px 26px; background: #fff; border-bottom: 1px solid var(--mv-border);">
+    <div class="mv-dual-progress">
+      <div class="mv-dual-progress-fill" style="width: {{ stats.resolved_pct }}%;"></div>
+    </div>
+    <div class="mv-stat-row">
+      <div>
+        <div class="mv-stat-num">{{ stats.resolved }} hoàn thành ({{ stats.resolved_pct }}%)</div>
+        <div class="mv-stat-legend"><span class="mv-dot-green"></span> Đã xử lý / Đã đóng</div>
+      </div>
+      <div>
+        <div class="mv-stat-num">{{ stats.new }} mới · {{ stats.in_progress }} đang xử lý</div>
+        <div class="mv-stat-legend"><span class="mv-dot-purple"></span> Đang chờ xử lý</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Thanh Tabs lọc theo trạng thái -->
+  <nav class="mv-tabs">
+    <a href="{% url 'tickets:list' %}" class="mv-tab {% if not current_status %}active{% endif %}">
+      Tất cả ({{ stats.total }})
+    </a>
+    {% for code, label in status_choices %}
+      <a href="?status={{ code }}" class="mv-tab {% if current_status == code %}active{% endif %}">
+        {{ label }}
+      </a>
+    {% endfor %}
+  </nav>
+
+  <!-- Danh sách Ticket -->
+  <div>
+    {% for ticket in tickets %}
+      <div class="mv-ticket-item">
+        <div class="mv-ticket-main">
+          <!-- Ruy-băng vàng hiển thị mức ưu tiên (giống nhãn IMDb 8.7 / 9) -->
+          <div class="mv-ribbon">
+            <span class="mv-ribbon-label">MỨC</span>
+            <span class="mv-ribbon-val">P{{ ticket.priority }}</span>
+          </div>
+
+          <div>
+            <a href="{% url 'tickets:detail' ticket.pk %}" class="mv-ticket-title">
+              <strong>{{ ticket.short_id }}</strong> — {{ ticket.title }}
+            </a>
+            <div class="mv-ticket-meta">
+              <span>Danh mục: <strong>{{ ticket.category.name }}</strong></span>
+              <span>Người tạo: <strong>{{ ticket.created_by.username }}</strong></span>
+              <span>
+                Phụ trách:
+                <strong>{% if ticket.assignee %}{{ ticket.assignee.username }}{% else %}Chưa gán{% endif %}</strong>
+              </span>
+              <span>{{ ticket.created_at|date:"d/m/Y H:i" }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <span class="mv-status mv-status-{{ ticket.status }}">
+            {{ ticket.get_status_display }}
+          </span>
+          <a href="{% url 'tickets:detail' ticket.pk %}" class="mv-btn mv-btn-crimson" style="padding: 7px 16px; font-size: 0.8rem;">
+            Chi tiết
+          </a>
+        </div>
+      </div>
+    {% empty %}
+      <div style="padding: 48px 26px; text-align: center; color: var(--mv-muted);">
+        Chưa có ticket nào phù hợp với bộ lọc hiện tại.
+        <div style="margin-top: 14px;">
+          <a href="{% url 'tickets:create' %}" class="mv-btn mv-btn-crimson">+ Tạo ticket đầu tiên</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Phân trang -->
+  {% if is_paginated %}
+    <div style="padding: 18px 26px; display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 0.85rem; color: var(--mv-muted);">
+        Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+      </span>
+      <div style="display: flex; gap: 8px;">
+        {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}" class="mv-btn mv-btn-ghost">← Trước</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}" class="mv-btn mv-btn-crimson">Tiếp →</a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

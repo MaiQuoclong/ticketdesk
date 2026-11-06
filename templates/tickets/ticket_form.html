@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Cập nhật Ticket{% else %}Tạo Ticket mới{% endif %}{% endblock %}
+
+{% block content %}
+<div style="max-width: 680px; margin: 0 auto;">
+  <div class="mv-card">
+    <div class="mv-card-header-crimson" style="display: flex; align-items: center; justify-content: space-between;">
+      <h2>{% if object %}Cập nhật {{ object.short_id }}{% else %}Gửi yêu cầu hỗ trợ mới{% endif %}</h2>
+      <span class="mv-brand-badge">TD</span>
+    </div>
+
+    <div class="mv-card-body">
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% for field in form %}
+          <div class="mv-form-group">
+            <label class="mv-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+              <div style="color: var(--mv-crimson); font-size: 0.82rem; margin-top: 5px;">
+                {{ field.errors|striptags }}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 28px;">
+          <a href="{% url 'tickets:list' %}" class="mv-btn mv-btn-ghost">Hủy bỏ</a>
+          <button type="submit" class="mv-btn mv-btn-crimson" style="min-width: 160px;">
+            {% if object %}Lưu thay đổi{% else %}Gửi yêu cầu{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

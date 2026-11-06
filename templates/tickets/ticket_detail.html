@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}{{ ticket.short_id }} · {{ ticket.title }}{% endblock %}
+
+{% block content %}
+<div class="mv-detail-grid">
+  <!-- Cột trái: Thông tin chi tiết Ticket + Bình luận -->
+  <div>
+    <div class="mv-card">
+      <!-- Banner Polygonal tiêu đề Ticket -->
+      <div class="mv-poly-bg" style="padding: 34px 28px; color: #fff;">
+        <div style="font-size: 0.8rem; opacity: 0.85; margin-bottom: 6px;">
+          <a href="{% url 'tickets:list' %}" style="color: #fff;">← Quay lại danh sách</a>
+          &nbsp;·&nbsp; Mã yêu cầu: <strong>{{ ticket.short_id }}</strong>
+        </div>
+        <h1 style="font-weight: 300; font-size: 1.75rem; line-height: 1.3; margin-bottom: 10px;">
+          {{ ticket.title }}
+        </h1>
+        <div style="font-size: 0.84rem; opacity: 0.9;">
+          {{ ticket.category.name }} &nbsp;·&nbsp; Mở ngày {{ ticket.created_at|date:"d/m/Y H:i" }}
+        </div>
+      </div>
+
+      <!-- Khối thông tin tóm tắt giống màn hình Avengers trong mẫu UI -->
+      <div class="mv-card-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--mv-border);">
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div class="mv-ribbon">
+              <span class="mv-ribbon-label">ƯU TIÊN</span>
+              <span class="mv-ribbon-val">{{ ticket.get_priority_display }}</span>
+            </div>
+            <div>
+              <div style="font-size: 0.75rem; color: var(--mv-muted); text-transform: uppercase;">Trạng thái hiện tại</div>
+              <div style="font-size: 1.25rem; font-weight: 300; color: var(--mv-crimson);">
+                {{ ticket.get_status_display }}
+              </div>
+            </div>
+          </div>
+
+          <a href="{% url 'tickets:edit' ticket.pk %}" class="mv-btn mv-btn-crimson">
+            Chỉnh sửa Ticket
+          </a>
+        </div>
+
+        <!-- Người tạo & Người xử lý (Director / Writer style) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px 0; border-bottom: 1px solid var(--mv-border);">
+          <div>
+            <div style="font-size: 0.76rem; font-weight: 600; color: var(--mv-text);">Người gửi yêu cầu</div>
+            <div style="font-size: 1.05rem; font-weight: 300; color: var(--mv-crimson); margin-top: 2px;">
+              {{ ticket.created_by.username }}
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 0.76rem; font-weight: 600; color: var(--mv-text);">Nhân viên phụ trách</div>
+            <div style="font-size: 1.05rem; font-weight: 300; color: var(--mv-crimson); margin-top: 2px;">
+              {% if ticket.assignee %}{{ ticket.assignee.username }}{% else %}Chưa phân công{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Mô tả sự cố (Storyline style) -->
+        <div style="padding: 22px 0;">
+          <h3 style="font-weight: 300; font-size: 1.2rem; color: var(--mv-muted); margin-bottom: 10px;">
+            Mô tả chi tiết sự cố
+          </h3>
+          <div style="color: #555b66; white-space: pre-line; font-size: 0.96rem;">{{ ticket.description }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Khối Bình luận & Trao đổi -->
+    <div class="mv-card">
+      <div class="mv-card-header-crimson">
+        <h2>Trao đổi & Bình luận ({{ comments|length }})</h2>
+      </div>
+      <div class="mv-card-body">
+        {% for c in comments %}
+          <div style="display: flex; gap: 14px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--mv-border);">
+            <span class="mv-avatar" style="background: var(--mv-crimson);">{{ c.author.username|slice:":2" }}</span>
+            <div style="flex: 1;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div>
+                  <strong style="font-size: 0.92rem;">{{ c.author.username }}</strong>
+                  <span style="font-size: 0.75rem; color: var(--mv-muted); margin-left: 6px;">
+                    ({{ c.author.get_role_display }})
+                  </span>
+                  {% if c.is_internal %}
+                    <span style="background: var(--mv-amber); color: #1f1f1f; font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 3px; margin-left: 6px;">
+                      GHI CHÚ NỘI BỘ
+                    </span>
+                  {% endif %}
+                </div>
+                <span style="font-size: 0.78rem; color: var(--mv-muted);">{{ c.created_at|date:"d/m/Y H:i" }}</span>
+              </div>
+              <div style="font-size: 0.93rem; color: #3c4048; white-space: pre-line;">{{ c.content }}</div>
+            </div>
+          </div>
+        {% empty %}
+          <p style="color: var(--mv-muted); font-size: 0.9rem; margin-bottom: 18px;">
+            Chưa có bình luận nào trên ticket này.
+          </p>
+        {% endfor %}
+
+        {% if ticket.status != 'closed' %}
+          <form method="post" action="{% url 'tickets:add_comment' ticket.pk %}">
+            {% csrf_token %}
+            <div class="mv-form-group">
+              {{ comment_form.content }}
+            </div>
+
+            {% if user.role != 'customer' %}
+              <div class="mv-toggle-row">
+                <span style="font-size: 0.88rem; color: var(--mv-text);">
+                  Đánh dấu là <strong>Ghi chú nội bộ</strong> (ẩn với khách hàng)
+                </span>
+                {{ comment_form.is_internal }}
+              </div>
+            {% endif %}
+
+            <button type="submit" class="mv-btn mv-btn-crimson" style="width: 100%;">
+              Gửi phản hồi
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Cột phải: Thao tác điều phối (Manager/Agent) & Lịch sử thay đổi -->
+  <div>
+    {% if user.role == 'manager' %}
+      <div class="mv-card">
+        <div class="mv-card-header-crimson">
+          <h2>Phân công xử lý</h2>
+        </div>
+        <div class="mv-card-body">
+          <form method="post" action="{% url 'tickets:assign' ticket.pk %}">
+            {% csrf_token %}
+            <div class="mv-form-group">
+              <label class="mv-label">Chọn nhân viên hỗ trợ (Agent)</label>
+              <select name="agent_id" class="mv-select" required>
+                <option value="">-- Chọn kỹ thuật viên --</option>
+                {% for ag in agents %}
+                  <option value="{{ ag.pk }}" {% if ticket.assignee_id == ag.pk %}selected{% endif %}>
+                    {{ ag.username }} ({{ ag.email|default:"IT Support" }})
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="mv-btn mv-btn-crimson" style="width: 100%;">
+              Gán người xử lý
+            </button>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if user.role != 'customer' %}
+      <div class="mv-card">
+        <div class="mv-card-header-crimson">
+          <h2>Cập nhật trạng thái</h2>
+        </div>
+        <div class="mv-card-body">
+          <form method="post" action="{% url 'tickets:change_status' ticket.pk %}">
+            {% csrf_token %}
+            <div class="mv-form-group">
+              <label class="mv-label">Trạng thái mới</label>
+              <select name="status" class="mv-select">
+                {% for code, label in status_choices %}
+                  <option value="{{ code }}" {% if ticket.status == code %}selected{% endif %}>
+                    {{ label }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="mv-btn mv-btn-crimson" style="width: 100%;">
+              Lưu trạng thái
+            </button>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Lịch sử thay đổi Ticket (Audit Trail) -->
+    <div class="mv-card">
+      <div class="mv-card-header-crimson">
+        <h2>Lịch sử thay đổi</h2>
+      </div>
+      <div class="mv-card-body">
+        {% for h in histories %}
+          <div style="padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--mv-border); font-size: 0.84rem;">
+            <div>
+              <strong>{{ h.actor.username|default:"Hệ thống" }}</strong> đổi
+              <strong>{{ h.field }}</strong>
+            </div>
+            <div style="color: var(--mv-crimson); margin: 2px 0;">
+              {{ h.old_value }} → <strong>{{ h.new_value }}</strong>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--mv-muted);">
+              {{ h.created_at|date:"d/m/Y H:i" }}
+            </div>
+          </div>
+        {% empty %}
+          <p style="font-size: 0.85rem; color: var(--mv-muted);">Chưa có thay đổi nào được ghi nhận.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
