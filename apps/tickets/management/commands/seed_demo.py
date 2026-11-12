@@ -94,9 +94,7 @@ class Command(BaseCommand):
             created_by=users["khachhang01"],
         )
         assign_ticket(ticket=t2, agent=users["agent02"], actor=users["quanly01"])
-        change_ticket_status(
-            ticket=t2, new_status=Ticket.Status.RESOLVED, actor=users["agent02"]
-        )
+        change_ticket_status(ticket=t2, new_status=Ticket.Status.RESOLVED, actor=users["agent02"])
         add_comment(
             ticket=t2,
             author=users["agent02"],
@@ -120,8 +118,7 @@ class Command(BaseCommand):
         t4 = Ticket.objects.create(
             title="Cài đặt môi trường Docker Desktop trên máy mới",
             description=(
-                "Máy trạm mới nhận chưa bật sẵn WSL2 và Docker Desktop "
-                "để chạy môi trường dev."
+                "Máy trạm mới nhận chưa bật sẵn WSL2 và Docker Desktop để chạy môi trường dev."
             ),
             priority=Ticket.Priority.LOW,
             category=cats["Phần mềm"],

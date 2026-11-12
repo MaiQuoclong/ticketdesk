@@ -63,9 +63,7 @@ class TicketListView(LoginRequiredMixin, TicketQuerysetMixin, ListView):
             base_qs.values_list("status").annotate(total=Count("id")).values_list("status", "total")
         )
         total_all = sum(counts.values())
-        resolved_count = counts.get(Ticket.Status.RESOLVED, 0) + counts.get(
-            Ticket.Status.CLOSED, 0
-        )
+        resolved_count = counts.get(Ticket.Status.RESOLVED, 0) + counts.get(Ticket.Status.CLOSED, 0)
         ctx["stats"] = {
             "total": total_all,
             "new": counts.get(Ticket.Status.NEW, 0),
@@ -163,9 +161,7 @@ def ticket_status_view(request: HttpRequest, pk) -> HttpResponse:
     new_status = request.POST.get("status", "")
     try:
         change_ticket_status(ticket=ticket, new_status=new_status, actor=request.user)
-        messages.success(
-            request, f"Đã chuyển trạng thái sang {ticket.get_status_display()}."
-        )
+        messages.success(request, f"Đã chuyển trạng thái sang {ticket.get_status_display()}.")
     except TicketServiceError as exc:
         messages.error(request, str(exc))
     return redirect("tickets:detail", pk=pk)

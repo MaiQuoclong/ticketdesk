@@ -88,9 +88,7 @@ def add_comment(
     if ticket.status == Ticket.Status.CLOSED:
         raise TicketClosedError("Ticket đã đóng, không thể thêm bình luận mới.")
 
-    internal_flag = (
-        is_internal if author.role in (User.Role.AGENT, User.Role.MANAGER) else False
-    )
+    internal_flag = is_internal if author.role in (User.Role.AGENT, User.Role.MANAGER) else False
     return Comment.objects.create(
         ticket=ticket,
         author=author,
