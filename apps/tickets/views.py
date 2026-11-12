@@ -201,6 +201,17 @@ def _check_manager(request: HttpRequest) -> bool:
     )
 
 
+def _count_tickets_by(field: str) -> Coalesce:
+    counts = (
+        Ticket.objects.filter(**{field: OuterRef("pk")})
+        .order_by()
+        .values(field)
+        .annotate(n=Count("id"))
+        .values("n")
+    )
+    return Coalesce(Subquery(counts, output_field=IntegerField()), 0)
+
+
 @login_required
 def manage_users_view(request: HttpRequest) -> HttpResponse:
     if not _check_manager(request):
@@ -241,8 +252,8 @@ def manage_users_view(request: HttpRequest) -> HttpResponse:
         return redirect("tickets:manage_users")
 
     users = User.objects.annotate(
-        created_count=Count("created_tickets", distinct=True),
-        assigned_count=Count("assigned_tickets", distinct=True),
+        created_count=_count_tickets_by("created_by"),
+        assigned_count=_count_tickets_by("assignee"),
     ).order_by("-date_joined")
     return render(
         request,
