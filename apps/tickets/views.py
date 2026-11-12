@@ -11,6 +11,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from apps.accounts.models import User
 
+from . import selectors
 from .forms import CommentForm, TicketForm
 from .models import Category, Comment, Ticket, TicketHistory
 from .services import (
@@ -305,6 +306,24 @@ def manage_categories_view(request: HttpRequest) -> HttpResponse:
 
     categories = Category.objects.annotate(ticket_count=Count("tickets")).order_by("name")
     return render(request, "tickets/manage_categories.html", {"categories": categories})
+
+
+@login_required
+def manage_stats_view(request: HttpRequest) -> HttpResponse:
+    if not _check_manager(request):
+        messages.error(request, "Chỉ Quản lý hoặc Admin mới có quyền xem thống kê.")
+        return redirect("tickets:list")
+
+    summary = selectors.ticket_summary()
+    context = {
+        "summary": summary,
+        "by_status": selectors.tickets_by_status(summary["total"]),
+        "by_priority": selectors.tickets_by_priority(summary["total"]),
+        "by_category": selectors.tickets_by_category(),
+        "agents": selectors.agent_workload(),
+        "overdue_days": selectors.OVERDUE_AFTER.days,
+    }
+    return render(request, "tickets/manage_stats.html", context)
 
 
 @login_required

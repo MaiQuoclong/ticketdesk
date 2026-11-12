@@ -22,6 +22,10 @@
           </a>
           {% if user.role == 'manager' or user.is_staff %}
             <span class="mv-nav-divider"></span>
+            <a href="{% url 'tickets:manage_stats' %}" class="mv-nav-link">
+              Thống kê
+            </a>
+            <span class="mv-nav-divider"></span>
             <a href="{% url 'tickets:manage_users' %}" class="mv-nav-link">
               Người dùng &amp; Vai trò
             </a>

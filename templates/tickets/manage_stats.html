@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Thống kê Ticket{% endblock %}
+
+{% block content %}
+<div class="mv-card" style="margin-bottom: 22px;">
+  <div class="mv-card-header-crimson">
+    <h2>Tổng quan ({{ summary.total }} ticket)</h2>
+  </div>
+  <div class="mv-stats-grid">
+    <div class="mv-stat-box">
+      <div class="mv-stat-box-num">{{ summary.new }}</div>
+      <div class="mv-stat-box-label">Mới</div>
+    </div>
+    <div class="mv-stat-box">
+      <div class="mv-stat-box-num">{{ summary.in_progress }}</div>
+      <div class="mv-stat-box-label">Đang xử lý</div>
+    </div>
+    <div class="mv-stat-box">
+      <div class="mv-stat-box-num">{{ summary.resolved }}</div>
+      <div class="mv-stat-box-label">Đã xử lý</div>
+    </div>
+    <div class="mv-stat-box">
+      <div class="mv-stat-box-num">{{ summary.closed }}</div>
+      <div class="mv-stat-box-label">Đã đóng</div>
+    </div>
+    <div class="mv-stat-box mv-stat-box-warn">
+      <div class="mv-stat-box-num">{{ summary.overdue }}</div>
+      <div class="mv-stat-box-label">Mới quá {{ overdue_days }} ngày</div>
+    </div>
+    <div class="mv-stat-box mv-stat-box-warn">
+      <div class="mv-stat-box-num">{{ summary.unassigned }}</div>
+      <div class="mv-stat-box-label">Đang mở, chưa gán</div>
+    </div>
+    <div class="mv-stat-box mv-stat-box-warn">
+      <div class="mv-stat-box-num">{{ summary.high_open }}</div>
+      <div class="mv-stat-box-label">Mức Cao đang mở</div>
+    </div>
+  </div>
+  <div style="padding: 0 26px 20px;">
+    <div class="mv-dual-progress">
+      <div class="mv-dual-progress-fill" style="width: {{ summary.done_pct }}%;"></div>
+    </div>
+    <div class="mv-stat-legend" style="margin-top: 8px;">
+      <span class="mv-dot-green"></span> {{ summary.done_pct }}% đã xử lý hoặc đã đóng
+    </div>
+  </div>
+</div>
+
+<div class="mv-detail-grid">
+  <div class="mv-card">
+    <div class="mv-card-header-crimson">
+      <h2>Theo trạng thái</h2>
+    </div>
+    <div class="mv-card-body">
+      {% for row in by_status %}
+        <div class="mv-bar-row">
+          <div class="mv-bar-head">
+            <span class="mv-status mv-status-{{ row.status }}">{{ row.label }}</span>
+            <strong>{{ row.total }} ({{ row.pct }}%)</strong>
+          </div>
+          <div class="mv-bar"><div class="mv-bar-fill" style="width: {{ row.pct }}%;"></div></div>
+        </div>
+      {% empty %}
+        <p style="color: var(--mv-muted);">Chưa có ticket.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="mv-card">
+    <div class="mv-card-header-crimson">
+      <h2>Theo mức ưu tiên</h2>
+    </div>
+    <div class="mv-card-body">
+      {% for row in by_priority %}
+        <div class="mv-bar-row">
+          <div class="mv-bar-head">
+            <span>{{ row.label }}</span>
+            <strong>{{ row.total }} ({{ row.pct }}%)</strong>
+          </div>
+          <div class="mv-bar"><div class="mv-bar-fill" style="width: {{ row.pct }}%;"></div></div>
+        </div>
+      {% empty %}
+        <p style="color: var(--mv-muted);">Chưa có ticket.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="mv-card" style="margin-top: 22px;">
+  <div class="mv-card-header-crimson">
+    <h2>Theo người xử lý</h2>
+  </div>
+  <div style="overflow-x: auto;">
+    <table class="mv-table">
+      <thead>
+        <tr>
+          <th>Nhân viên</th>
+          <th>Được gán</th>
+          <th>Đang xử lý</th>
+          <th>Đã xử lý</th>
+          <th>Đã đóng</th>
+          <th>Thời gian xử lý TB</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for agent in agents %}
+          <tr>
+            <td>
+              <span class="mv-avatar" style="width: 28px; height: 28px; font-size: 0.7rem;">{{ agent.username|slice:":2" }}</span>
+              <strong>{{ agent.username }}</strong>
+            </td>
+            <td>{{ agent.total }}</td>
+            <td>{{ agent.in_progress }}</td>
+            <td>{{ agent.resolved }}</td>
+            <td>{{ agent.closed }}</td>
+            <td>{{ agent.avg_resolve_display }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" style="text-align: center; color: var(--mv-muted);">Chưa có nhân viên hỗ trợ.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mv-card" style="margin-top: 22px;">
+  <div class="mv-card-header-crimson">
+    <h2>Theo danh mục</h2>
+  </div>
+  <div style="overflow-x: auto;">
+    <table class="mv-table">
+      <thead>
+        <tr>
+          <th>Danh mục</th>
+          <th>Tổng</th>
+          <th>Đang mở</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cat in by_category %}
+          <tr>
+            <td><strong>{{ cat.name }}</strong></td>
+            <td>{{ cat.total }}</td>
+            <td>{{ cat.open }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" style="text-align: center; color: var(--mv-muted);">Chưa có danh mục.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

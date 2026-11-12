@@ -9,6 +9,7 @@ urlpatterns = [
     path("new/", views.TicketCreateView.as_view(), name="create"),
     path("manage/users/", views.manage_users_view, name="manage_users"),
     path("manage/categories/", views.manage_categories_view, name="manage_categories"),
+    path("manage/stats/", views.manage_stats_view, name="manage_stats"),
     path("manage/history/", views.manage_history_view, name="manage_history"),
     path("<uuid:pk>/", views.TicketDetailView.as_view(), name="detail"),
     path("<uuid:pk>/edit/", views.TicketUpdateView.as_view(), name="edit"),
