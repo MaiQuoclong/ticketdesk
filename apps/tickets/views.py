@@ -1,7 +1,8 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count, ProtectedError, Q
+from django.db.models import Count, IntegerField, OuterRef, ProtectedError, Q, Subquery
+from django.db.models.functions import Coalesce
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -11,7 +12,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from apps.accounts.models import User
 
 from .forms import CommentForm, TicketForm
-from .models import Category, Ticket, TicketHistory
+from .models import Category, Comment, Ticket, TicketHistory
 from .services import (
     TicketServiceError,
     add_comment,
@@ -54,7 +55,13 @@ class TicketListView(LoginRequiredMixin, TicketQuerysetMixin, ListView):
             qs = qs.filter(category_id=category)
         if q:
             qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q))
-        return qs
+        comments = Comment.objects.filter(ticket=OuterRef("pk"))
+        if self.request.user.role == User.Role.CUSTOMER:
+            comments = comments.filter(is_internal=False)
+        comment_count = comments.order_by().values("ticket").annotate(n=Count("id")).values("n")
+        return qs.annotate(
+            comment_count=Coalesce(Subquery(comment_count, output_field=IntegerField()), 0)
+        )
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

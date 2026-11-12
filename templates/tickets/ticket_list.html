@@ -105,6 +105,7 @@
             <div class="mv-ticket-meta">
               <span>Danh mục: <strong>{{ ticket.category.name }}</strong></span>
               <span>Người tạo: <strong>{{ ticket.created_by.username }}</strong></span>
+              <span>Bình luận: <strong>{{ ticket.comment_count }}</strong></span>
               <span>
                 Phụ trách:
                 <strong>{% if ticket.assignee %}{{ ticket.assignee.username }}{% else %}Chưa gán{% endif %}</strong>
