@@ -38,7 +38,6 @@ a {
   text-decoration: none;
 }
 
-/* Polygonal SVG Background (MovieValley signature style) */
 .mv-poly-bg {
   background-color: #3b1254;
   background-image:
@@ -47,7 +46,6 @@ a {
   background-position: center;
 }
 
-/* Top Crimson App Bar */
 .mv-navbar {
   background: var(--mv-crimson);
   color: #fff;
@@ -189,7 +187,6 @@ a {
   border-radius: 4px;
 }
 
-/* Container & Layout */
 .mv-container {
   max-width: 1180px;
   width: 100%;
@@ -198,7 +195,6 @@ a {
   flex: 1;
 }
 
-/* Cards */
 .mv-card {
   background: var(--mv-surface);
   border-radius: 6px;
@@ -222,7 +218,6 @@ a {
   padding: 26px;
 }
 
-/* Yellow Ribbon Score/Priority Badge (Exact MovieValley IMDb 8.7 / 9 ribbon) */
 .mv-ribbon {
   display: inline-flex;
   flex-direction: column;
@@ -250,7 +245,6 @@ a {
   font-weight: 700;
 }
 
-/* Crimson Agent Strip ("People you may know" style) */
 .mv-agent-strip {
   background: var(--mv-crimson);
   color: #fff;
@@ -291,7 +285,6 @@ a {
   opacity: 0.75;
 }
 
-/* Tabs Navigation (Movies / TV series / Watch list style) */
 .mv-tabs {
   display: flex;
   align-items: center;
@@ -321,7 +314,6 @@ a {
   border-bottom-color: var(--mv-crimson);
 }
 
-/* Search & Filter Bar ("Search people / The|" style) */
 .mv-search-bar {
   display: flex;
   flex-wrap: wrap;
@@ -350,7 +342,6 @@ a {
   border-bottom-color: var(--mv-crimson);
 }
 
-/* Dual Progress Bar (Avengers Budget/Revenue Green & Purple style) */
 .mv-dual-progress {
   height: 6px;
   width: 100%;
@@ -403,7 +394,6 @@ a {
   display: inline-block;
 }
 
-/* Buttons */
 .mv-btn {
   display: inline-flex;
   align-items: center;
@@ -450,7 +440,6 @@ a {
   background: #e4e7ee;
 }
 
-/* Status Pill */
 .mv-status {
   display: inline-block;
   font-size: 0.82rem;
@@ -463,7 +452,6 @@ a {
 .mv-status-resolved { color: #059669; }
 .mv-status-closed { color: var(--mv-muted); }
 
-/* Ticket Feed Row */
 .mv-ticket-item {
   display: flex;
   align-items: center;
@@ -504,7 +492,6 @@ a {
   color: var(--mv-muted);
 }
 
-/* Forms */
 .mv-form-group {
   margin-bottom: 20px;
 }
@@ -541,7 +528,6 @@ a {
   background: #fff;
 }
 
-/* Toggle Switch (MovieValley "Share on Facebook/Instagram" crimson toggle) */
 .mv-toggle-row {
   display: flex;
   align-items: center;
@@ -584,7 +570,6 @@ a {
   transform: translateX(20px);
 }
 
-/* Alert messages */
 .mv-alert {
   padding: 13px 20px;
   border-radius: 4px;
@@ -595,7 +580,6 @@ a {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
 
-/* Login Screen (Full MovieValley polygonal card) */
 .mv-login-wrapper {
   min-height: calc(100vh - 64px);
   display: flex;
@@ -662,7 +646,6 @@ a {
   margin-top: 32px;
 }
 
-/* Grid 2 columns for Detail View */
 .mv-detail-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -675,7 +658,6 @@ a {
   }
 }
 
-/* Crimson Footer Bar */
 .mv-footer {
   background: var(--mv-crimson);
   color: rgba(255, 255, 255, 0.9);

@@ -62,7 +62,6 @@ class Command(BaseCommand):
                 )
             Ticket.objects.bulk_create(tickets, batch_size=1000)
 
-            # auto_now_add luôn ghi đè created_at, nên rải lại ngày tạo trong 90 ngày gần nhất
             for t in tickets:
                 t.created_at = now - timedelta(minutes=random.randint(0, 90 * 24 * 60))
             Ticket.objects.bulk_update(tickets, ["created_at"], batch_size=1000)

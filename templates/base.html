@@ -10,13 +10,11 @@
 <body>
   <header class="mv-navbar">
     <div class="mv-navbar-inner">
-      <!-- Logo bên trái -->
       <a href="{% url 'tickets:list' %}" class="mv-brand">
         <span class="mv-brand-badge">TD</span>
         <span><strong>Ticket</strong>Desk</span>
       </a>
 
-      <!-- Menu điều hướng ở giữa, ngăn cách từng mục bằng vạch trắng -->
       {% if user.is_authenticated %}
         <nav class="mv-nav-menu">
           <a href="{% url 'tickets:list' %}" class="mv-nav-link">
@@ -43,7 +41,6 @@
         </nav>
       {% endif %}
 
-      <!-- Cụm thao tác & tài khoản ở bên phải -->
       <div class="mv-nav-actions">
         {% if user.is_authenticated %}
           <a href="{% url 'tickets:create' %}" class="mv-btn mv-btn-outline-light">
