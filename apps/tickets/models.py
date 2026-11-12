@@ -73,6 +73,19 @@ class Ticket(models.Model):
         verbose_name = "Ticket"
         verbose_name_plural = "Ticket"
         ordering = ["-created_at"]
+        indexes = [
+            # Danh sách ticket lọc theo trạng thái và sắp xếp mới nhất trước
+            models.Index(fields=["status", "-created_at"], name="ticket_status_created_idx"),
+            # Trang thống kê / "ticket của tôi": lọc theo người xử lý + trạng thái
+            models.Index(fields=["assignee", "status"], name="ticket_assignee_status_idx"),
+        ]
+        constraints = [
+            # Django 5.1+ dùng condition=, bản cũ hơn dùng check=
+            models.CheckConstraint(condition=~models.Q(title=""), name="ticket_title_not_empty"),
+            models.CheckConstraint(
+                condition=models.Q(priority__in=[1, 2, 3]), name="ticket_priority_valid"
+            ),
+        ]
 
     @property
     def short_id(self) -> str:
