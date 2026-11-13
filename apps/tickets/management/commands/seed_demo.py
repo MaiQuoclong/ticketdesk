@@ -9,7 +9,6 @@ class Command(BaseCommand):
     help = "Tạo dữ liệu mẫu cho dự án TicketDesk (Tuần 4)"
 
     def handle(self, *args, **options) -> None:
-        # 1. Tạo tài khoản mẫu theo 3 vai trò
         admin_user, created = User.objects.get_or_create(
             username="admin",
             defaults={
@@ -41,7 +40,6 @@ class Command(BaseCommand):
                 u.save()
             users[username] = u
 
-        # 2. Tạo danh mục sự cố
         categories_spec = [
             ("Phần cứng", "Sự cố máy tính, màn hình, máy in, thiết bị ngoại vi"),
             ("Phần mềm", "Lỗi cài đặt, bản quyền, ứng dụng văn phòng và ERP"),
@@ -53,7 +51,6 @@ class Command(BaseCommand):
             cat, _ = Category.objects.get_or_create(name=name, defaults={"description": desc})
             cats[name] = cat
 
-        # 3. Tạo ticket mẫu nếu chưa có
         if Ticket.objects.exists():
             self.stdout.write(
                 self.style.WARNING("Dữ liệu ticket mẫu đã tồn tại, bỏ qua bước tạo thêm.")
@@ -94,9 +91,7 @@ class Command(BaseCommand):
             created_by=users["khachhang01"],
         )
         assign_ticket(ticket=t2, agent=users["agent02"], actor=users["quanly01"])
-        change_ticket_status(
-            ticket=t2, new_status=Ticket.Status.RESOLVED, actor=users["agent02"]
-        )
+        change_ticket_status(ticket=t2, new_status=Ticket.Status.RESOLVED, actor=users["agent02"])
         add_comment(
             ticket=t2,
             author=users["agent02"],
@@ -120,8 +115,7 @@ class Command(BaseCommand):
         t4 = Ticket.objects.create(
             title="Cài đặt môi trường Docker Desktop trên máy mới",
             description=(
-                "Máy trạm mới nhận chưa bật sẵn WSL2 và Docker Desktop "
-                "để chạy môi trường dev."
+                "Máy trạm mới nhận chưa bật sẵn WSL2 và Docker Desktop để chạy môi trường dev."
             ),
             priority=Ticket.Priority.LOW,
             category=cats["Phần mềm"],

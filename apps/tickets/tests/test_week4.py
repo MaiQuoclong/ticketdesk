@@ -22,9 +22,7 @@ def sample_setup():
         username="khach02", password="123", role=User.Role.CUSTOMER
     )
     agent = User.objects.create_user(username="agent01", password="123", role=User.Role.AGENT)
-    manager = User.objects.create_user(
-        username="quanly01", password="123", role=User.Role.MANAGER
-    )
+    manager = User.objects.create_user(username="quanly01", password="123", role=User.Role.MANAGER)
     t1 = Ticket.objects.create(
         title="Lỗi không mở được phần mềm",
         description="Chi tiết lỗi",

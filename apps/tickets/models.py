@@ -73,6 +73,16 @@ class Ticket(models.Model):
         verbose_name = "Ticket"
         verbose_name_plural = "Ticket"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "-created_at"], name="ticket_status_created_idx"),
+            models.Index(fields=["assignee", "status"], name="ticket_assignee_status_idx"),
+        ]
+        constraints = [
+            models.CheckConstraint(condition=~models.Q(title=""), name="ticket_title_not_empty"),
+            models.CheckConstraint(
+                condition=models.Q(priority__in=[1, 2, 3]), name="ticket_priority_valid"
+            ),
+        ]
 
     @property
     def short_id(self) -> str:

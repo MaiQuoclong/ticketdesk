@@ -1,7 +1,8 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count, ProtectedError, Q
+from django.db.models import Count, IntegerField, OuterRef, ProtectedError, Q, Subquery
+from django.db.models.functions import Coalesce
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -10,8 +11,9 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from apps.accounts.models import User
 
+from . import selectors
 from .forms import CommentForm, TicketForm
-from .models import Category, Ticket, TicketHistory
+from .models import Category, Comment, Ticket, TicketHistory
 from .services import (
     TicketServiceError,
     add_comment,
@@ -54,7 +56,13 @@ class TicketListView(LoginRequiredMixin, TicketQuerysetMixin, ListView):
             qs = qs.filter(category_id=category)
         if q:
             qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q))
-        return qs
+        comments = Comment.objects.filter(ticket=OuterRef("pk"))
+        if self.request.user.role == User.Role.CUSTOMER:
+            comments = comments.filter(is_internal=False)
+        comment_count = comments.order_by().values("ticket").annotate(n=Count("id")).values("n")
+        return qs.annotate(
+            comment_count=Coalesce(Subquery(comment_count, output_field=IntegerField()), 0)
+        )
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -63,9 +71,7 @@ class TicketListView(LoginRequiredMixin, TicketQuerysetMixin, ListView):
             base_qs.values_list("status").annotate(total=Count("id")).values_list("status", "total")
         )
         total_all = sum(counts.values())
-        resolved_count = counts.get(Ticket.Status.RESOLVED, 0) + counts.get(
-            Ticket.Status.CLOSED, 0
-        )
+        resolved_count = counts.get(Ticket.Status.RESOLVED, 0) + counts.get(Ticket.Status.CLOSED, 0)
         ctx["stats"] = {
             "total": total_all,
             "new": counts.get(Ticket.Status.NEW, 0),
@@ -163,9 +169,7 @@ def ticket_status_view(request: HttpRequest, pk) -> HttpResponse:
     new_status = request.POST.get("status", "")
     try:
         change_ticket_status(ticket=ticket, new_status=new_status, actor=request.user)
-        messages.success(
-            request, f"Đã chuyển trạng thái sang {ticket.get_status_display()}."
-        )
+        messages.success(request, f"Đã chuyển trạng thái sang {ticket.get_status_display()}.")
     except TicketServiceError as exc:
         messages.error(request, str(exc))
     return redirect("tickets:detail", pk=pk)
@@ -196,6 +200,17 @@ def _check_manager(request: HttpRequest) -> bool:
     return request.user.is_authenticated and (
         request.user.role == User.Role.MANAGER or request.user.is_staff
     )
+
+
+def _count_tickets_by(field: str) -> Coalesce:
+    counts = (
+        Ticket.objects.filter(**{field: OuterRef("pk")})
+        .order_by()
+        .values(field)
+        .annotate(n=Count("id"))
+        .values("n")
+    )
+    return Coalesce(Subquery(counts, output_field=IntegerField()), 0)
 
 
 @login_required
@@ -238,8 +253,8 @@ def manage_users_view(request: HttpRequest) -> HttpResponse:
         return redirect("tickets:manage_users")
 
     users = User.objects.annotate(
-        created_count=Count("created_tickets", distinct=True),
-        assigned_count=Count("assigned_tickets", distinct=True),
+        created_count=_count_tickets_by("created_by"),
+        assigned_count=_count_tickets_by("assignee"),
     ).order_by("-date_joined")
     return render(
         request,
@@ -291,6 +306,24 @@ def manage_categories_view(request: HttpRequest) -> HttpResponse:
 
     categories = Category.objects.annotate(ticket_count=Count("tickets")).order_by("name")
     return render(request, "tickets/manage_categories.html", {"categories": categories})
+
+
+@login_required
+def manage_stats_view(request: HttpRequest) -> HttpResponse:
+    if not _check_manager(request):
+        messages.error(request, "Chỉ Quản lý hoặc Admin mới có quyền xem thống kê.")
+        return redirect("tickets:list")
+
+    summary = selectors.ticket_summary()
+    context = {
+        "summary": summary,
+        "by_status": selectors.tickets_by_status(summary["total"]),
+        "by_priority": selectors.tickets_by_priority(summary["total"]),
+        "by_category": selectors.tickets_by_category(),
+        "agents": selectors.agent_workload(),
+        "overdue_days": selectors.OVERDUE_AFTER.days,
+    }
+    return render(request, "tickets/manage_stats.html", context)
 
 
 @login_required

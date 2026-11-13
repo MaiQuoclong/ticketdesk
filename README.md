@@ -18,3 +18,14 @@ uv run ruff format --check .
 # Chạy bộ kiểm thử tự động (Pytest)
 uv run pytest
 ```
+
+## Chạy với PostgreSQL (Tuần 5)
+```bash
+docker compose up -d --wait          # chạy PostgreSQL 16 trong container
+cp .env.example .env                 # DATABASE_URL trỏ tới postgres://ticketdesk:...@localhost:5432/ticketdesk
+uv sync
+uv run python manage.py migrate
+uv run python manage.py seed_demo
+uv run python manage.py runserver
+```
+Vào psql: `docker exec -it ticketdesk-db psql -U ticketdesk`

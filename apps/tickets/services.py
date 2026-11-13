@@ -14,9 +14,20 @@ class TicketClosedError(TicketServiceError):
     """Lỗi khi thao tác trên Ticket đã đóng."""
 
 
+def _lock(ticket: Ticket) -> Ticket:
+    """Khoá dòng ticket tới hết transaction để hai request đồng thời không ghi đè nhau."""
+    return Ticket.objects.select_for_update().get(pk=ticket.pk)
+
+
+def _sync(target: Ticket, source: Ticket, fields: list[str]) -> None:
+    for field in fields:
+        setattr(target, field, getattr(source, field))
+
+
 @transaction.atomic
 def assign_ticket(*, ticket: Ticket, agent: User, actor: User) -> Ticket:
     """Gán người xử lý cho ticket và ghi lại lịch sử thay đổi."""
+    original, ticket = ticket, _lock(ticket)
     if ticket.status == Ticket.Status.CLOSED:
         raise TicketClosedError("Ticket đã đóng, không thể gán người xử lý.")
     if agent.role != User.Role.AGENT:
@@ -29,6 +40,7 @@ def assign_ticket(*, ticket: Ticket, agent: User, actor: User) -> Ticket:
     if ticket.status == Ticket.Status.NEW:
         ticket.status = Ticket.Status.IN_PROGRESS
     ticket.save(update_fields=["assignee", "status", "updated_at"])
+    _sync(original, ticket, ["assignee", "status", "updated_at"])
 
     TicketHistory.objects.create(
         ticket=ticket,
@@ -45,12 +57,13 @@ def assign_ticket(*, ticket: Ticket, agent: User, actor: User) -> Ticket:
             old_value=old_status,
             new_value=ticket.get_status_display(),
         )
-    return ticket
+    return original
 
 
 @transaction.atomic
 def change_ticket_status(*, ticket: Ticket, new_status: str, actor: User) -> Ticket:
     """Chuyển trạng thái ticket theo đúng quy tắc vòng đời và lưu lịch sử."""
+    original, ticket = ticket, _lock(ticket)
     if ticket.status == Ticket.Status.CLOSED:
         raise TicketClosedError("Không thể chuyển trạng thái từ Đã đóng sang trạng thái khác.")
 
@@ -58,7 +71,7 @@ def change_ticket_status(*, ticket: Ticket, new_status: str, actor: User) -> Tic
         raise TicketServiceError("Trạng thái không hợp lệ.")
 
     if ticket.status == new_status:
-        return ticket
+        return original
 
     old_display = ticket.get_status_display()
     ticket.status = new_status
@@ -69,6 +82,7 @@ def change_ticket_status(*, ticket: Ticket, new_status: str, actor: User) -> Tic
         update_fields.append("resolved_at")
 
     ticket.save(update_fields=update_fields)
+    _sync(original, ticket, ["status", "resolved_at", "updated_at"])
 
     TicketHistory.objects.create(
         ticket=ticket,
@@ -77,7 +91,7 @@ def change_ticket_status(*, ticket: Ticket, new_status: str, actor: User) -> Tic
         old_value=old_display,
         new_value=ticket.get_status_display(),
     )
-    return ticket
+    return original
 
 
 @transaction.atomic
@@ -85,12 +99,11 @@ def add_comment(
     *, ticket: Ticket, author: User, content: str, is_internal: bool = False
 ) -> Comment:
     """Thêm bình luận vào ticket (chỉ Agent/Manager mới được tạo ghi chú nội bộ)."""
+    ticket = _lock(ticket)
     if ticket.status == Ticket.Status.CLOSED:
         raise TicketClosedError("Ticket đã đóng, không thể thêm bình luận mới.")
 
-    internal_flag = (
-        is_internal if author.role in (User.Role.AGENT, User.Role.MANAGER) else False
-    )
+    internal_flag = is_internal if author.role in (User.Role.AGENT, User.Role.MANAGER) else False
     return Comment.objects.create(
         ticket=ticket,
         author=author,
