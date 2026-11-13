@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "django>=5.1,<6.0",
     "django-environ>=0.11.2",
+    "django-unfold>=0.110.1",
     "psycopg[binary]>=3.3.8",
 ]
 

@@ -22,6 +22,8 @@ DEBUG = env("DEBUG")
 ALLOWED_HOSTS: list[str] = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
 INSTALLED_APPS = [
+    "unfold",
+    "unfold.contrib.filters",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -96,3 +98,11 @@ LOGIN_REDIRECT_URL = "tickets:list"
 LOGOUT_REDIRECT_URL = "accounts:login"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+UNFOLD = {
+    "SITE_TITLE": "TicketDesk Admin",
+    "SITE_HEADER": "TicketDesk",
+    "SITE_SYMBOL": "support_agent",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+}
