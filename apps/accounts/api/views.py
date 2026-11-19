@@ -68,9 +68,14 @@ class AgentListAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = UserSerializer
     pagination_class = None
+    queryset = User.objects.none()
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return User.objects.none()
         user = self.request.user
-        if user.role not in (User.Role.AGENT, User.Role.MANAGER) and not user.is_staff:
+        if not user.is_authenticated or (
+            user.role not in (User.Role.AGENT, User.Role.MANAGER) and not user.is_staff
+        ):
             raise PermissionDenied("Chỉ nhân viên hỗ trợ hoặc quản lý mới được xem danh sách này.")
         return User.objects.filter(role=User.Role.AGENT, is_active=True).order_by("username")
