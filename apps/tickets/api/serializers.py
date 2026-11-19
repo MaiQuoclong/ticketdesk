@@ -20,7 +20,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class TicketSerializer(serializers.ModelSerializer):
     short_id = serializers.CharField(read_only=True)
-    created_by = serializers.StringRelatedField(read_only=True)
+    created_by = serializers.CharField(source="created_by.username", read_only=True)
     created_by_id = serializers.UUIDField(read_only=True)
     assignee_username = serializers.CharField(
         source="assignee.username",
@@ -93,7 +93,7 @@ class TicketAssignSerializer(serializers.Serializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    author = serializers.StringRelatedField(read_only=True)
+    author = serializers.CharField(source="author.username", read_only=True)
     author_id = serializers.UUIDField(read_only=True)
 
     class Meta:
@@ -120,7 +120,11 @@ class AttachmentSerializer(serializers.ModelSerializer):
     MAX_FILE_SIZE = 5 * 1024 * 1024
     ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "pdf", "docx"}
 
-    uploaded_by = serializers.StringRelatedField(read_only=True)
+    uploaded_by = serializers.CharField(
+        source="uploaded_by.username",
+        read_only=True,
+        default=None,
+    )
     uploaded_by_id = serializers.UUIDField(read_only=True)
 
     class Meta:
@@ -158,7 +162,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
 
 
 class TicketHistorySerializer(serializers.ModelSerializer):
-    actor = serializers.StringRelatedField(read_only=True)
+    actor = serializers.CharField(source="actor.username", read_only=True, default=None)
 
     class Meta:
         model = TicketHistory
