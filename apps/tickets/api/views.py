@@ -1,15 +1,23 @@
 from django.db.models import Count, IntegerField, OuterRef, ProtectedError, Subquery
 from django.db.models.functions import Coalesce
+from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.accounts.models import User
 from apps.tickets.models import Category, Comment, Ticket
-from apps.tickets.services import TicketClosedError
+from apps.tickets.services import TicketClosedError, assign_ticket, change_ticket_status
 
-from .permissions import IsManagerOrReadOnly, IsStaffOrOwnerReadOnly
-from .serializers import CategorySerializer, TicketSerializer
+from .permissions import (
+    IsAgentOrManager,
+    IsManager,
+    IsManagerOrReadOnly,
+    IsOwnerOrManager,
+    IsStaffOrOwnerReadOnly,
+)
+from .serializers import CategorySerializer, TicketAssignSerializer, TicketSerializer
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -37,7 +45,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 
 class TicketViewSet(viewsets.ModelViewSet):
-    """CRUD Ticket với phân trang, lọc, tìm kiếm, sắp xếp và lọc get_queryset chống IDOR."""
+    """CRUD Ticket với phân trang, lọc, tìm kiếm, sắp xếp, chống IDOR và các action vòng đời."""
 
     serializer_class = TicketSerializer
     permission_classes = [IsStaffOrOwnerReadOnly]
@@ -67,3 +75,54 @@ class TicketViewSet(viewsets.ModelViewSet):
         if serializer.instance.status == Ticket.Status.CLOSED:
             raise TicketClosedError("Ticket đã đóng, không thể chỉnh sửa.")
         serializer.save()
+
+    @action(detail=True, methods=["post"], permission_classes=[IsManager])
+    def assign(self, request: Request, pk=None) -> Response:
+        ticket = self.get_object()
+        payload = TicketAssignSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        agent = get_object_or_404(
+            User,
+            pk=payload.validated_data["target_agent_id"],
+            role=User.Role.AGENT,
+        )
+        try:
+            ticket = assign_ticket(ticket=ticket, agent=agent, actor=request.user)
+        except TicketClosedError as exc:
+            return Response(
+                {"detail": str(exc), "code": "ticket_closed"},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(self.get_serializer(ticket).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAgentOrManager])
+    def resolve(self, request: Request, pk=None) -> Response:
+        ticket = self.get_object()
+        try:
+            ticket = change_ticket_status(
+                ticket=ticket,
+                new_status=Ticket.Status.RESOLVED,
+                actor=request.user,
+            )
+        except TicketClosedError as exc:
+            return Response(
+                {"detail": str(exc), "code": "ticket_closed"},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(self.get_serializer(ticket).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsOwnerOrManager])
+    def close(self, request: Request, pk=None) -> Response:
+        ticket = self.get_object()
+        try:
+            ticket = change_ticket_status(
+                ticket=ticket,
+                new_status=Ticket.Status.CLOSED,
+                actor=request.user,
+            )
+        except TicketClosedError as exc:
+            return Response(
+                {"detail": str(exc), "code": "ticket_closed"},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(self.get_serializer(ticket).data, status=status.HTTP_200_OK)
