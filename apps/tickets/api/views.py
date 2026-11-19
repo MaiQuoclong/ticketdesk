@@ -1,3 +1,5 @@
+from typing import cast
+
 from django.db.models import Count, IntegerField, OuterRef, ProtectedError, Subquery
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
@@ -72,11 +74,14 @@ class TicketViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Ticket.objects.select_related("created_by", "assignee", "category")
         user = self.request.user
-        if user.is_authenticated and user.role == User.Role.CUSTOMER:
+        is_customer = (
+            isinstance(user, User) and user.is_authenticated and user.role == User.Role.CUSTOMER
+        )
+        if is_customer:
             qs = qs.filter(created_by=user)
 
         comments = Comment.objects.filter(ticket=OuterRef("pk"))
-        if user.is_authenticated and user.role == User.Role.CUSTOMER:
+        if is_customer:
             comments = comments.filter(is_internal=False)
         comment_count = comments.order_by().values("ticket").annotate(n=Count("id")).values("n")
         return qs.annotate(
@@ -87,13 +92,14 @@ class TicketViewSet(viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
 
     def perform_update(self, serializer: TicketSerializer) -> None:
-        if serializer.instance.status == Ticket.Status.CLOSED:
+        if serializer.instance and serializer.instance.status == Ticket.Status.CLOSED:
             raise TicketClosedError("Ticket đã đóng, không thể chỉnh sửa.")
         serializer.save()
 
     @action(detail=True, methods=["post"], permission_classes=[IsManager])
     def assign(self, request: Request, pk=None) -> Response:
         ticket = self.get_object()
+        actor = cast(User, request.user)
         payload = TicketAssignSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
         agent = get_object_or_404(
@@ -102,7 +108,7 @@ class TicketViewSet(viewsets.ModelViewSet):
             role=User.Role.AGENT,
         )
         try:
-            ticket = assign_ticket(ticket=ticket, agent=agent, actor=request.user)
+            ticket = assign_ticket(ticket=ticket, agent=agent, actor=actor)
         except TicketClosedError as exc:
             return Response(
                 {"detail": str(exc), "code": "ticket_closed"},
@@ -113,11 +119,12 @@ class TicketViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], permission_classes=[IsAgentOrManager])
     def resolve(self, request: Request, pk=None) -> Response:
         ticket = self.get_object()
+        actor = cast(User, request.user)
         try:
             ticket = change_ticket_status(
                 ticket=ticket,
                 new_status=Ticket.Status.RESOLVED,
-                actor=request.user,
+                actor=actor,
             )
         except TicketClosedError as exc:
             return Response(
@@ -129,11 +136,12 @@ class TicketViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], permission_classes=[IsOwnerOrManager])
     def close(self, request: Request, pk=None) -> Response:
         ticket = self.get_object()
+        actor = cast(User, request.user)
         try:
             ticket = change_ticket_status(
                 ticket=ticket,
                 new_status=Ticket.Status.CLOSED,
-                actor=request.user,
+                actor=actor,
             )
         except TicketClosedError as exc:
             return Response(
@@ -150,9 +158,10 @@ class TicketViewSet(viewsets.ModelViewSet):
     )
     def comments(self, request: Request, pk=None) -> Response:
         ticket = self.get_object()
+        user = cast(User, request.user)
         if request.method == "GET":
             qs = ticket.comments.select_related("author").order_by("created_at")
-            if request.user.role == User.Role.CUSTOMER:
+            if user.role == User.Role.CUSTOMER:
                 qs = qs.filter(is_internal=False)
             return Response(CommentSerializer(qs, many=True).data, status=status.HTTP_200_OK)
 
@@ -161,7 +170,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         try:
             comment = add_comment(
                 ticket=ticket,
-                author=request.user,
+                author=user,
                 content=serializer.validated_data["content"],
                 is_internal=serializer.validated_data.get("is_internal", False),
             )
@@ -234,6 +243,6 @@ class AttachmentViewSet(
     def get_queryset(self):
         qs = Attachment.objects.select_related("ticket", "uploaded_by")
         user = self.request.user
-        if user.is_authenticated and user.role == User.Role.CUSTOMER:
+        if isinstance(user, User) and user.is_authenticated and user.role == User.Role.CUSTOMER:
             qs = qs.filter(ticket__created_by=user)
         return qs

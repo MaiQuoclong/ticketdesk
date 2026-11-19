@@ -74,8 +74,10 @@ class AgentListAPIView(generics.ListAPIView):
         if getattr(self, "swagger_fake_view", False):
             return User.objects.none()
         user = self.request.user
-        if not user.is_authenticated or (
-            user.role not in (User.Role.AGENT, User.Role.MANAGER) and not user.is_staff
+        if (
+            not isinstance(user, User)
+            or not user.is_authenticated
+            or (user.role not in (User.Role.AGENT, User.Role.MANAGER) and not user.is_staff)
         ):
             raise PermissionDenied("Chỉ nhân viên hỗ trợ hoặc quản lý mới được xem danh sách này.")
         return User.objects.filter(role=User.Role.AGENT, is_active=True).order_by("username")
