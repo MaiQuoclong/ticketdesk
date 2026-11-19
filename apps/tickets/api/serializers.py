@@ -176,3 +176,11 @@ class TicketHistorySerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = fields
+
+
+class DashboardSummarySerializer(serializers.Serializer):
+    summary = serializers.DictField(read_only=True)
+    by_status = serializers.ListField(child=serializers.DictField(), read_only=True)
+    by_priority = serializers.ListField(child=serializers.DictField(), read_only=True)
+    by_category = serializers.ListField(child=serializers.DictField(), read_only=True)
+    agents = serializers.ListField(child=serializers.DictField(), read_only=True)

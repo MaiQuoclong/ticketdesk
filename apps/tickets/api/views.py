@@ -1,16 +1,20 @@
+from datetime import timedelta
 from typing import cast
 
 from django.db.models import Count, IntegerField, OuterRef, ProtectedError, Subquery
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
-from rest_framework import mixins, status, viewsets
+from django.utils import timezone
+from rest_framework import generics, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.accounts.models import User
+from apps.tickets import selectors
 from apps.tickets.models import Attachment, Category, Comment, Ticket
 from apps.tickets.services import (
     TicketClosedError,
@@ -31,6 +35,7 @@ from .serializers import (
     AttachmentSerializer,
     CategorySerializer,
     CommentSerializer,
+    DashboardSummarySerializer,
     TicketAssignSerializer,
     TicketHistorySerializer,
     TicketSerializer,
@@ -246,3 +251,71 @@ class AttachmentViewSet(
         if isinstance(user, User) and user.is_authenticated and user.role == User.Role.CUSTOMER:
             qs = qs.filter(ticket__created_by=user)
         return qs
+
+
+class DashboardSummaryAPIView(APIView):
+    """Thống kê tổng hợp ticket theo trạng thái, ưu tiên, danh mục và hiệu suất agent."""
+
+    permission_classes = [IsManager]
+    serializer_class = DashboardSummarySerializer
+
+    def get(self, request: Request) -> Response:
+        summary = selectors.ticket_summary()
+        total = summary["total"]
+        categories = [
+            {
+                "id": str(cat.id),
+                "name": cat.name,
+                "total": getattr(cat, "total", 0),
+                "open": getattr(cat, "open", 0),
+            }
+            for cat in selectors.tickets_by_category()
+        ]
+        agents = [
+            {
+                "id": str(agent.id),
+                "username": agent.username,
+                "total": getattr(agent, "total", 0),
+                "in_progress": getattr(agent, "in_progress", 0),
+                "resolved": getattr(agent, "resolved", 0),
+                "closed": getattr(agent, "closed", 0),
+                "avg_resolve_display": getattr(agent, "avg_resolve_display", "—"),
+            }
+            for agent in selectors.agent_workload()
+        ]
+        data = {
+            "summary": summary,
+            "by_status": selectors.tickets_by_status(total),
+            "by_priority": selectors.tickets_by_priority(total),
+            "by_category": categories,
+            "agents": agents,
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class DashboardSlaOverdueAPIView(generics.ListAPIView):
+    """Danh sách ticket quá hạn SLA (mặc định 24 giờ) vẫn đang ở trạng thái Mới hoặc Đang xử lý."""
+
+    permission_classes = [IsManager]
+    serializer_class = TicketSerializer
+    queryset = Ticket.objects.none()
+
+    def get_queryset(self):
+        hours_str = str(self.request.GET.get("hours", "24"))
+        hours = int(hours_str) if hours_str.isdigit() and int(hours_str) > 0 else 24
+        cutoff = timezone.now() - timedelta(hours=hours)
+        comment_count = (
+            Comment.objects.filter(ticket=OuterRef("pk"))
+            .order_by()
+            .values("ticket")
+            .annotate(n=Count("id"))
+            .values("n")
+        )
+        return (
+            Ticket.objects.select_related("created_by", "assignee", "category")
+            .filter(status__in=selectors.OPEN_STATUSES, created_at__lt=cutoff)
+            .annotate(
+                comment_count=Coalesce(Subquery(comment_count, output_field=IntegerField()), 0)
+            )
+            .order_by("created_at")
+        )
