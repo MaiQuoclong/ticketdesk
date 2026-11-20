@@ -5,7 +5,7 @@ from django.contrib.auth.models import Group
 from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 
-from .models import User
+from .models import RefreshToken, User
 
 admin.site.unregister(Group)
 
@@ -27,3 +27,11 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
 @admin.register(Group)
 class GroupAdmin(BaseGroupAdmin, ModelAdmin):
     pass
+
+
+@admin.register(RefreshToken)
+class RefreshTokenAdmin(ModelAdmin):
+    list_display = ["user", "is_revoked", "expires_at", "created_at"]
+    list_filter = ["is_revoked", "created_at"]
+    search_fields = ["user__username", "user__email"]
+    list_select_related = ["user"]
