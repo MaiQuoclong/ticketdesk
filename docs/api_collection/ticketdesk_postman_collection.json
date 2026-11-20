@@ -1,0 +1,443 @@
+{
+  "info": {
+    "_postman_id": "544361da-79c4-4aaa-aae2-71b7c80cb23e",
+    "name": "TicketDesk REST API (Tuần 6)",
+    "description": "Bộ request kiểm thử REST API cho hệ thống TicketDesk (JWT Auth, Categories, Tickets, Actions, Comments, Attachments, History, Dashboard, IDOR).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "refresh_token",
+      "value": ""
+    },
+    {
+      "key": "category_id",
+      "value": ""
+    },
+    {
+      "key": "ticket_id",
+      "value": ""
+    },
+    {
+      "key": "agent_id",
+      "value": ""
+    },
+    {
+      "key": "attachment_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Xác thực & Người dùng",
+      "item": [
+        {
+          "name": "Đăng nhập (Lấy cặp JWT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', data.access);",
+                  "    pm.collectionVariables.set('refresh_token', data.refresh);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"quanly01\",\n  \"password\": \"matkhau123\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/login/"
+          }
+        },
+        {
+          "name": "Làm mới Access Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/refresh/"
+          }
+        },
+        {
+          "name": "Thông tin cá nhân (Me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/accounts/me/"
+          }
+        },
+        {
+          "name": "Danh sách nhân viên kỹ thuật (Agents)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/accounts/agents/"
+          }
+        },
+        {
+          "name": "Đăng xuất (Thu hồi Refresh Token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/logout/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Danh mục sự cố (Categories)",
+      "item": [
+        {
+          "name": "Danh sách danh mục",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/categories/"
+          }
+        },
+        {
+          "name": "Tạo danh mục mới (Manager)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bảo mật & VPN\",\n  \"description\": \"Sự cố chứng chỉ và kết nối VPN\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/categories/"
+          }
+        },
+        {
+          "name": "Cập nhật danh mục (Manager)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Cập nhật mô tả danh mục sự cố\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/categories/{{category_id}}/"
+          }
+        },
+        {
+          "name": "Xóa danh mục (Manager)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/categories/{{category_id}}/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Quản lý Ticket & Vòng đời",
+      "item": [
+        {
+          "name": "Danh sách Ticket (Lọc, Tìm kiếm, Sắp xếp)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tickets/?status=new&ordering=-priority&page=1"
+          }
+        },
+        {
+          "name": "Tạo Ticket mới",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Máy in tầng 3 báo lỗi kẹt giấy liên tục\",\n  \"description\": \"Đã thử rút giấy nhưng đèn đỏ vẫn nhấp nháy.\",\n  \"category\": \"{{category_id}}\",\n  \"priority\": 3\n}"
+            },
+            "url": "{{base_url}}/api/v1/tickets/"
+          }
+        },
+        {
+          "name": "Xem chi tiết Ticket",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tickets/{{ticket_id}}/"
+          }
+        },
+        {
+          "name": "Sửa thông tin Ticket",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priority\": 3\n}"
+            },
+            "url": "{{base_url}}/api/v1/tickets/{{ticket_id}}/"
+          }
+        },
+        {
+          "name": "Gán người xử lý (Assign - Manager)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agent_id\": \"{{agent_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/tickets/{{ticket_id}}/assign/"
+          }
+        },
+        {
+          "name": "Đánh dấu Đã xử lý (Resolve - Agent/Manager)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tickets/{{ticket_id}}/resolve/"
+          }
+        },
+        {
+          "name": "Đóng Ticket (Close - Owner/Manager)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tickets/{{ticket_id}}/close/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Bình luận, Đính kèm & Lịch sử",
+      "item": [
+        {
+          "name": "Danh sách bình luận của Ticket",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tickets/{{ticket_id}}/comments/"
+          }
+        },
+        {
+          "name": "Thêm bình luận vào Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Đã kiểm tra và thay thế linh kiện mới.\",\n  \"is_internal\": false\n}"
+            },
+            "url": "{{base_url}}/api/v1/tickets/{{ticket_id}}/comments/"
+          }
+        },
+        {
+          "name": "Danh sách tệp đính kèm của Ticket",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tickets/{{ticket_id}}/attachments/"
+          }
+        },
+        {
+          "name": "Xóa tệp đính kèm",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/attachments/{{attachment_id}}/"
+          }
+        },
+        {
+          "name": "Xem lịch sử thay đổi của Ticket",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tickets/{{ticket_id}}/history/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Thống kê Dashboard (Manager)",
+      "item": [
+        {
+          "name": "Thống kê tổng hợp Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/dashboard/summary/"
+          }
+        },
+        {
+          "name": "Danh sách Ticket quá hạn SLA 24h",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/dashboard/sla-overdue/?hours=24"
+          }
+        }
+      ]
+    }
+  ]
+}
