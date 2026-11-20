@@ -1,3 +1,5 @@
+from typing import cast
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -30,7 +32,7 @@ class TicketQuerysetMixin:
     def get_queryset(self):
         qs = Ticket.objects.select_related("category", "assignee", "created_by")
         user = self.request.user
-        if user.is_authenticated and user.role == User.Role.CUSTOMER:
+        if isinstance(user, User) and user.is_authenticated and user.role == User.Role.CUSTOMER:
             qs = qs.filter(created_by=user)
         return qs
 
@@ -57,7 +59,8 @@ class TicketListView(LoginRequiredMixin, TicketQuerysetMixin, ListView):
         if q:
             qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q))
         comments = Comment.objects.filter(ticket=OuterRef("pk"))
-        if self.request.user.role == User.Role.CUSTOMER:
+        user = self.request.user
+        if isinstance(user, User) and user.role == User.Role.CUSTOMER:
             comments = comments.filter(is_internal=False)
         comment_count = comments.order_by().values("ticket").annotate(n=Count("id")).values("n")
         return qs.annotate(
@@ -96,14 +99,15 @@ class TicketDetailView(LoginRequiredMixin, TicketQuerysetMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        user = cast(User, self.request.user)
         comments_qs = self.object.comments.select_related("author")
-        if self.request.user.role == User.Role.CUSTOMER:
+        if user.role == User.Role.CUSTOMER:
             comments_qs = comments_qs.filter(is_internal=False)
         ctx["comments"] = comments_qs
         ctx["histories"] = self.object.histories.select_related("actor")[:20]
         ctx["comment_form"] = CommentForm()
         ctx["status_choices"] = Ticket.Status.choices
-        if self.request.user.role == User.Role.MANAGER:
+        if user.role == User.Role.MANAGER:
             ctx["agents"] = User.objects.filter(role=User.Role.AGENT, is_active=True)
         return ctx
 
@@ -132,8 +136,9 @@ class TicketUpdateView(LoginRequiredMixin, TicketQuerysetMixin, UpdateView):
 
 def _get_accessible_ticket(request: HttpRequest, pk) -> Ticket:
     qs = Ticket.objects.select_related("category", "assignee", "created_by")
-    if request.user.role == User.Role.CUSTOMER:
-        qs = qs.filter(created_by=request.user)
+    user = request.user
+    if isinstance(user, User) and user.role == User.Role.CUSTOMER:
+        qs = qs.filter(created_by=user)
     ticket = qs.filter(pk=pk).first()
     if not ticket:
         raise Http404("Không tìm thấy ticket.")
@@ -143,7 +148,8 @@ def _get_accessible_ticket(request: HttpRequest, pk) -> Ticket:
 @login_required
 @require_POST
 def ticket_assign_view(request: HttpRequest, pk) -> HttpResponse:
-    if request.user.role != User.Role.MANAGER:
+    user = cast(User, request.user)
+    if user.role != User.Role.MANAGER:
         messages.error(request, "Chỉ Quản lý mới có quyền gán người xử lý.")
         return redirect("tickets:detail", pk=pk)
 
@@ -151,7 +157,7 @@ def ticket_assign_view(request: HttpRequest, pk) -> HttpResponse:
     agent_id = request.POST.get("agent_id")
     agent = get_object_or_404(User, pk=agent_id, role=User.Role.AGENT)
     try:
-        assign_ticket(ticket=ticket, agent=agent, actor=request.user)
+        assign_ticket(ticket=ticket, agent=agent, actor=user)
         messages.success(request, f"Đã gán ticket cho nhân viên {agent.username}.")
     except TicketServiceError as exc:
         messages.error(request, str(exc))
@@ -161,14 +167,15 @@ def ticket_assign_view(request: HttpRequest, pk) -> HttpResponse:
 @login_required
 @require_POST
 def ticket_status_view(request: HttpRequest, pk) -> HttpResponse:
-    if request.user.role == User.Role.CUSTOMER:
+    user = cast(User, request.user)
+    if user.role == User.Role.CUSTOMER:
         messages.error(request, "Khách hàng không được tự đổi trạng thái xử lý.")
         return redirect("tickets:detail", pk=pk)
 
     ticket = _get_accessible_ticket(request, pk)
     new_status = request.POST.get("status", "")
     try:
-        change_ticket_status(ticket=ticket, new_status=new_status, actor=request.user)
+        change_ticket_status(ticket=ticket, new_status=new_status, actor=user)
         messages.success(request, f"Đã chuyển trạng thái sang {ticket.get_status_display()}.")
     except TicketServiceError as exc:
         messages.error(request, str(exc))
@@ -178,13 +185,14 @@ def ticket_status_view(request: HttpRequest, pk) -> HttpResponse:
 @login_required
 @require_POST
 def ticket_comment_view(request: HttpRequest, pk) -> HttpResponse:
+    user = cast(User, request.user)
     ticket = _get_accessible_ticket(request, pk)
     form = CommentForm(request.POST)
     if form.is_valid():
         try:
             add_comment(
                 ticket=ticket,
-                author=request.user,
+                author=user,
                 content=form.cleaned_data["content"],
                 is_internal=form.cleaned_data.get("is_internal", False),
             )
@@ -197,8 +205,11 @@ def ticket_comment_view(request: HttpRequest, pk) -> HttpResponse:
 
 
 def _check_manager(request: HttpRequest) -> bool:
-    return request.user.is_authenticated and (
-        request.user.role == User.Role.MANAGER or request.user.is_staff
+    user = request.user
+    return (
+        isinstance(user, User)
+        and user.is_authenticated
+        and (user.role == User.Role.MANAGER or user.is_staff)
     )
 
 
