@@ -1,12 +1,19 @@
 import pytest
 from django.urls import reverse
 
-from apps.accounts.models import User
-from apps.tickets.models import Category, Ticket
+from apps.tickets.models import Ticket
 from apps.tickets.services import (
     TicketClosedError,
     add_comment,
     assign_ticket,
+)
+
+from .factories import (
+    AgentFactory,
+    CategoryFactory,
+    CustomerFactory,
+    ManagerFactory,
+    TicketFactory,
 )
 
 pytestmark = pytest.mark.django_db
@@ -14,27 +21,13 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def sample_setup():
-    cat = Category.objects.create(name="Phần mềm")
-    customer1 = User.objects.create_user(
-        username="khach01", password="123", role=User.Role.CUSTOMER
-    )
-    customer2 = User.objects.create_user(
-        username="khach02", password="123", role=User.Role.CUSTOMER
-    )
-    agent = User.objects.create_user(username="agent01", password="123", role=User.Role.AGENT)
-    manager = User.objects.create_user(username="quanly01", password="123", role=User.Role.MANAGER)
-    t1 = Ticket.objects.create(
-        title="Lỗi không mở được phần mềm",
-        description="Chi tiết lỗi",
-        category=cat,
-        created_by=customer1,
-    )
-    t2 = Ticket.objects.create(
-        title="Ticket của khách hàng 2",
-        description="Chi tiết lỗi 2",
-        category=cat,
-        created_by=customer2,
-    )
+    cat = CategoryFactory(name="Phần mềm")
+    customer1 = CustomerFactory(username="khach01")
+    customer2 = CustomerFactory(username="khach02")
+    agent = AgentFactory(username="agent01")
+    manager = ManagerFactory(username="quanly01")
+    t1 = TicketFactory(title="Lỗi không mở được phần mềm", category=cat, created_by=customer1)
+    t2 = TicketFactory(title="Ticket của khách hàng 2", category=cat, created_by=customer2)
     return {
         "cat": cat,
         "customer1": customer1,

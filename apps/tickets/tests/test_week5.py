@@ -15,7 +15,16 @@ from django.utils import timezone
 from apps.accounts.groups import MANAGER_GROUP
 from apps.accounts.models import User
 from apps.tickets import selectors, services
-from apps.tickets.models import Category, Comment, Ticket, TicketHistory
+from apps.tickets.models import Comment, Ticket, TicketHistory
+
+from .factories import (
+    AgentFactory,
+    CategoryFactory,
+    CommentFactory,
+    CustomerFactory,
+    ManagerFactory,
+    TicketFactory,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -24,14 +33,12 @@ backfill_module = import_module("apps.tickets.migrations.0003_backfill_resolved_
 
 @pytest.fixture
 def setup_data():
-    cat = Category.objects.create(name="Mạng")
-    customer = User.objects.create_user("khach01", password="123", role=User.Role.CUSTOMER)
-    other = User.objects.create_user("khach02", password="123", role=User.Role.CUSTOMER)
-    agent1 = User.objects.create_user("agent01", password="123", role=User.Role.AGENT)
-    agent2 = User.objects.create_user("agent02", password="123", role=User.Role.AGENT)
-    manager = User.objects.create_user(
-        "quanly01", password="123", role=User.Role.MANAGER, is_staff=True
-    )
+    cat = CategoryFactory(name="Mạng")
+    customer = CustomerFactory(username="khach01")
+    other = CustomerFactory(username="khach02")
+    agent1 = AgentFactory(username="agent01")
+    agent2 = AgentFactory(username="agent02")
+    manager = ManagerFactory(username="quanly01")
     return {
         "cat": cat,
         "customer": customer,
@@ -43,14 +50,9 @@ def setup_data():
 
 
 def make_ticket(data, **kwargs):
-    fields = {
-        "title": "Không vào được VPN",
-        "description": "Chi tiết",
-        "category": data["cat"],
-        "created_by": data["customer"],
-    }
-    fields.update(kwargs)
-    return Ticket.objects.create(**fields)
+    kwargs.setdefault("category", data["cat"])
+    kwargs.setdefault("created_by", data["customer"])
+    return TicketFactory(**kwargs)
 
 
 @pytest.mark.parametrize("field, value", [("title", ""), ("priority", 9)])
@@ -68,11 +70,9 @@ def test_seed_tickets_bulk_creates_tickets_and_comments(setup_data):
 
 def test_ticket_list_comment_count_hides_internal_for_customer(client, setup_data):
     ticket = make_ticket(setup_data)
-    Comment.objects.create(ticket=ticket, author=setup_data["customer"], content="a")
-    Comment.objects.create(ticket=ticket, author=setup_data["agent1"], content="b")
-    Comment.objects.create(
-        ticket=ticket, author=setup_data["agent1"], content="nội bộ", is_internal=True
-    )
+    CommentFactory(ticket=ticket, author=setup_data["customer"], content="a")
+    CommentFactory(ticket=ticket, author=setup_data["agent1"], content="b")
+    CommentFactory(ticket=ticket, author=setup_data["agent1"], content="nội bộ", is_internal=True)
 
     client.force_login(setup_data["customer"])
     row = client.get(reverse("tickets:list")).context["tickets"][0]
@@ -88,7 +88,7 @@ def test_ticket_list_query_count_does_not_grow_with_rows(
 ):
     for i in range(25):
         t = make_ticket(setup_data, title=f"Ticket {i}", assignee=setup_data["agent1"])
-        Comment.objects.create(ticket=t, author=setup_data["agent1"], content="x")
+        CommentFactory(ticket=t, author=setup_data["agent1"], content="x")
 
     client.force_login(setup_data["manager"])
     with django_assert_max_num_queries(8):
