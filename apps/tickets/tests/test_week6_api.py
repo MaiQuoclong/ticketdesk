@@ -7,7 +7,16 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import RefreshToken, User
-from apps.tickets.models import Category, Comment, Ticket, TicketHistory
+from apps.tickets.models import Category, Ticket, TicketHistory
+
+from .factories import (
+    AgentFactory,
+    CategoryFactory,
+    CommentFactory,
+    CustomerFactory,
+    ManagerFactory,
+    TicketFactory,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -19,17 +28,12 @@ def api() -> Any:
 
 @pytest.fixture
 def api_data():
-    cat_net = Category.objects.create(name="Mạng & Đường truyền", description="Sự cố mạng")
-    cat_hw = Category.objects.create(name="Phần cứng", description="Sự cố thiết bị")
-    customer = User.objects.create_user("khach01", password="matkhau123", role=User.Role.CUSTOMER)
-    other = User.objects.create_user("khach02", password="matkhau123", role=User.Role.CUSTOMER)
-    agent = User.objects.create_user("agent01", password="matkhau123", role=User.Role.AGENT)
-    manager = User.objects.create_user(
-        "quanly01",
-        password="matkhau123",
-        role=User.Role.MANAGER,
-        is_staff=True,
-    )
+    cat_net = CategoryFactory(name="Mạng & Đường truyền", description="Sự cố mạng")
+    cat_hw = CategoryFactory(name="Phần cứng", description="Sự cố thiết bị")
+    customer = CustomerFactory(username="khach01")
+    other = CustomerFactory(username="khach02")
+    agent = AgentFactory(username="agent01")
+    manager = ManagerFactory(username="quanly01")
     return {
         "cat_net": cat_net,
         "cat_hw": cat_hw,
@@ -41,15 +45,9 @@ def api_data():
 
 
 def create_ticket(api_data, **kwargs) -> Ticket:
-    defaults = {
-        "title": "Không kết nối được VPN nội bộ",
-        "description": "Chi tiết sự cố kết nối VPN từ xa.",
-        "category": api_data["cat_net"],
-        "created_by": api_data["customer"],
-        "priority": Ticket.Priority.MEDIUM,
-    }
-    defaults.update(kwargs)
-    return Ticket.objects.create(**defaults)
+    kwargs.setdefault("category", api_data["cat_net"])
+    kwargs.setdefault("created_by", api_data["customer"])
+    return TicketFactory(**kwargs)
 
 
 def test_jwt_login_refresh_and_logout_revokes_token(api, api_data):
@@ -137,7 +135,7 @@ def test_category_crud_permissions_and_protected_delete_409(api, api_data):
     assert patch_resp.status_code == 200
     assert patch_resp.data["description"] == "Đã cập nhật"
 
-    ticket = create_ticket(api_data, category_id=cat_id)
+    ticket = create_ticket(api_data, category=Category.objects.get(pk=cat_id))
     conflict_resp = api.delete(f"/api/v1/categories/{cat_id}/")
     assert conflict_resp.status_code == 409
     assert conflict_resp.data["code"] == "category_in_use"
@@ -436,7 +434,7 @@ def test_dashboard_summary_sla_overdue_and_openapi_schema(api, api_data):
         created_at=timezone.now() - timedelta(hours=36)
     )
     create_ticket(api_data, title="Ticket mới tạo 1 giờ")
-    Comment.objects.create(ticket=overdue_ticket, author=api_data["customer"], content="Nhắc SLA")
+    CommentFactory(ticket=overdue_ticket, author=api_data["customer"], content="Nhắc SLA")
 
     api.force_authenticate(user=api_data["customer"])
     assert api.get("/api/v1/dashboard/summary/").status_code == 403
