@@ -5,7 +5,7 @@ from apps.accounts.models import User
 from apps.tickets.models import Attachment, Category, Comment, Ticket
 
 
-class UserFactory(factory.django.DjangoModelFactory):
+class UserFactory(factory.django.DjangoModelFactory[User]):
     class Meta:
         model = User
         django_get_or_create = ("username",)
@@ -40,7 +40,7 @@ class ManagerFactory(UserFactory):
     is_staff = True
 
 
-class CategoryFactory(factory.django.DjangoModelFactory):
+class CategoryFactory(factory.django.DjangoModelFactory[Category]):
     class Meta:
         model = Category
         django_get_or_create = ("name",)
@@ -49,7 +49,7 @@ class CategoryFactory(factory.django.DjangoModelFactory):
     description = factory.Faker("sentence", locale="vi_VN")
 
 
-class TicketFactory(factory.django.DjangoModelFactory):
+class TicketFactory(factory.django.DjangoModelFactory[Ticket]):
     class Meta:
         model = Ticket
 
@@ -62,7 +62,7 @@ class TicketFactory(factory.django.DjangoModelFactory):
     assignee = None
 
 
-class CommentFactory(factory.django.DjangoModelFactory):
+class CommentFactory(factory.django.DjangoModelFactory[Comment]):
     class Meta:
         model = Comment
 
@@ -72,7 +72,7 @@ class CommentFactory(factory.django.DjangoModelFactory):
     is_internal = False
 
 
-class AttachmentFactory(factory.django.DjangoModelFactory):
+class AttachmentFactory(factory.django.DjangoModelFactory[Attachment]):
     class Meta:
         model = Attachment
 

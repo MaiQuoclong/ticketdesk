@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import Any
 
 from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Q, QuerySet
 from django.utils import timezone
@@ -63,12 +64,12 @@ def format_duration(value: timedelta | None) -> str:
     return f"{hours} giờ" if hours else "< 1 giờ"
 
 
-def agent_workload() -> list[User]:
+def agent_workload() -> list[Any]:
     resolve_time = ExpressionWrapper(
         F("assigned_tickets__resolved_at") - F("assigned_tickets__created_at"),
         output_field=DurationField(),
     )
-    agents = list(
+    agents: list[Any] = list(
         User.objects.filter(role=User.Role.AGENT)
         .annotate(
             total=Count("assigned_tickets"),

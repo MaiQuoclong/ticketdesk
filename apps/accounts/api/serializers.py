@@ -1,4 +1,5 @@
-from typing import Any
+from datetime import timedelta
+from typing import Any, cast
 
 from django.conf import settings
 from django.contrib.auth import authenticate
@@ -50,7 +51,7 @@ class LoginSerializer(serializers.Serializer):
         jwt_refresh = SimpleJWTRefreshToken.for_user(user)
         refresh_str = str(jwt_refresh)
         access_str = str(jwt_refresh.access_token)
-        lifetime = settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"]
+        lifetime = cast(timedelta, settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"])
 
         RefreshToken.objects.create(
             user=user,

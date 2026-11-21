@@ -60,3 +60,25 @@ exclude_also = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
 ]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+mypy_path = "."
+exclude = ["/migrations/"]
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = ["factory.*", "environ.*", "debug_toolbar.*", "unfold.*", "django_filters.*", "drf_spectacular.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["apps.*.tests.*"]
+ignore_errors = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"

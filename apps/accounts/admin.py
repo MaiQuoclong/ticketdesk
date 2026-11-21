@@ -17,8 +17,10 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     change_password_form = AdminPasswordChangeForm
     list_display = ["username", "email", "role", "is_staff", "is_active"]
     list_filter = ["role", "is_staff", "is_active"]
-    fieldsets = BaseUserAdmin.fieldsets + (("Phân quyền TicketDesk", {"fields": ("role",)}),)
-    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+    fieldsets = tuple(BaseUserAdmin.fieldsets or ()) + (
+        ("Phân quyền TicketDesk", {"fields": ("role",)}),
+    )
+    add_fieldsets = tuple(BaseUserAdmin.add_fieldsets) + (
         ("Phân quyền TicketDesk", {"fields": ("role",)}),
     )
     search_fields = ["username", "email", "first_name", "last_name"]

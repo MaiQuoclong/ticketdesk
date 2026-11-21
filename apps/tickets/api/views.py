@@ -11,6 +11,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.serializers import BaseSerializer
 from rest_framework.views import APIView
 
 from apps.accounts.models import User
@@ -83,7 +84,7 @@ class TicketViewSet(viewsets.ModelViewSet):
             isinstance(user, User) and user.is_authenticated and user.role == User.Role.CUSTOMER
         )
         if is_customer:
-            qs = qs.filter(created_by=user)
+            qs = qs.filter(created_by=cast(User, user))
 
         comments = Comment.objects.filter(ticket=OuterRef("pk"))
         if is_customer:
@@ -93,10 +94,10 @@ class TicketViewSet(viewsets.ModelViewSet):
             comment_count=Coalesce(Subquery(comment_count, output_field=IntegerField()), 0)
         )
 
-    def perform_create(self, serializer: TicketSerializer) -> None:
+    def perform_create(self, serializer: BaseSerializer) -> None:
         serializer.save(created_by=self.request.user)
 
-    def perform_update(self, serializer: TicketSerializer) -> None:
+    def perform_update(self, serializer: BaseSerializer) -> None:
         if serializer.instance and serializer.instance.status == Ticket.Status.CLOSED:
             raise TicketClosedError("Ticket đã đóng, không thể chỉnh sửa.")
         serializer.save()
