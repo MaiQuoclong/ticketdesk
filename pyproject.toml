@@ -5,6 +5,7 @@ description = "Hệ thống tiếp nhận và xử lý yêu cầu hỗ trợ n�
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "celery>=5.7.0",
     "django>=5.1,<6.0",
     "django-environ>=0.11.2",
     "django-filter>=26.2",
@@ -13,6 +14,7 @@ dependencies = [
     "djangorestframework-simplejwt>=5.5.1",
     "drf-spectacular>=0.30.0",
     "psycopg[binary]>=3.3.8",
+    "redis>=8.2.0",
 ]
 
 [dependency-groups]
@@ -73,7 +75,7 @@ no_implicit_optional = true
 ignore_missing_imports = false
 
 [[tool.mypy.overrides]]
-module = ["factory.*", "environ.*", "debug_toolbar.*", "unfold.*", "django_filters.*", "drf_spectacular.*"]
+module = ["factory.*", "environ.*", "debug_toolbar.*", "unfold.*", "django_filters.*", "drf_spectacular.*", "celery.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
