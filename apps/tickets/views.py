@@ -12,6 +12,7 @@ from django.db.models.functions import Coalesce
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.utils.cache import patch_vary_headers
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
@@ -27,6 +28,8 @@ from .services import (
     assign_ticket,
     change_ticket_status,
 )
+
+OVERDUE_LIST_LIMIT = 20
 
 
 def _parse_uuid(value: str | None) -> uuid.UUID | None:
@@ -474,7 +477,16 @@ def manage_stats_view(request: HttpRequest) -> HttpResponse:
         messages.error(request, "Chỉ Quản lý hoặc Admin mới có quyền xem thống kê.")
         return redirect("tickets:list")
 
-    context = {**selectors.dashboard_stats(), "sla_hours": selectors.SLA_HOURS}
+    stats = selectors.dashboard_stats()
+    today = timezone.localdate()
+    context = {
+        **stats,
+        "sla_hours": selectors.SLA_HOURS,
+        "chart_data": selectors.dashboard_chart_data(stats),
+        "overdue_tickets": selectors.sla_overdue_tickets()[:OVERDUE_LIST_LIMIT],
+        "export_from": today.replace(day=1).isoformat(),
+        "export_to": today.isoformat(),
+    }
     return render(request, "tickets/manage_stats.html", context)
 
 

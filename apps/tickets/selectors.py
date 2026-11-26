@@ -13,6 +13,12 @@ from .models import Category, Ticket
 
 OPEN_STATUSES = [Ticket.Status.NEW, Ticket.Status.IN_PROGRESS]
 SLA_HOURS = 24
+STATUS_COLORS = {
+    "new": "#dc1f52",
+    "in_progress": "#d97706",
+    "resolved": "#059669",
+    "closed": "#8c939e",
+}
 STATS_CACHE_KEY = "tickets:dashboard-stats"
 STATS_CACHE_TIMEOUT = 300
 CACHE_RETRY_AFTER = 30
@@ -185,3 +191,33 @@ def invalidate_stats() -> None:
         cache.delete(STATS_CACHE_KEY)
     except Exception:
         _mark_cache_down("xoá thống kê")
+
+
+def dashboard_chart_data(stats: dict[str, Any]) -> dict[str, Any]:
+    labels = dict(Ticket.Status.choices)
+    counts = {row["status"]: row["total"] for row in stats["by_status"]}
+    status_codes = list(labels)
+    agents = stats["agents"]
+    series = [
+        (Ticket.Status.IN_PROGRESS, "in_progress"),
+        (Ticket.Status.RESOLVED, "resolved"),
+        (Ticket.Status.CLOSED, "closed"),
+    ]
+    return {
+        "status": {
+            "labels": [labels[c] for c in status_codes],
+            "values": [counts.get(c, 0) for c in status_codes],
+            "colors": [STATUS_COLORS[c] for c in status_codes],
+        },
+        "agents": {
+            "labels": [a["username"] for a in agents],
+            "datasets": [
+                {
+                    "label": labels[code],
+                    "data": [a[key] for a in agents],
+                    "backgroundColor": STATUS_COLORS[code],
+                }
+                for code, key in series
+            ],
+        },
+    }

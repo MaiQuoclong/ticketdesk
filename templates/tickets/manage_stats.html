@@ -1,115 +1,104 @@
 {% extends "base.html" %}
-{% load ticket_tags %}
-{% block title %}Thống kê Ticket{% endblock %}
+{% load static ticket_tags %}
+{% block title %}Dashboard Quản lý{% endblock %}
 
 {% block content %}
-<div class="mv-card" style="margin-bottom: 22px;">
-  <div class="mv-card-header-crimson">
-    <h2>Tổng quan ({{ summary.total }} ticket)</h2>
-  </div>
+<div class="mv-dash-toolbar">
+  <h1 class="mv-dash-title">Dashboard · {{ summary.total }} ticket</h1>
+  <a href="#export" class="mv-btn mv-btn-crimson">Xuất Excel</a>
+</div>
+
+<section class="mv-card" aria-labelledby="dash-summary">
+  <div class="mv-card-header-crimson"><h2 id="dash-summary">Tổng quan</h2></div>
   <div class="mv-stats-grid">
-    <div class="mv-stat-box">
-      <div class="mv-stat-box-num">{{ summary.new }}</div>
-      <div class="mv-stat-box-label">Mới</div>
-    </div>
-    <div class="mv-stat-box">
-      <div class="mv-stat-box-num">{{ summary.in_progress }}</div>
-      <div class="mv-stat-box-label">Đang xử lý</div>
-    </div>
-    <div class="mv-stat-box">
-      <div class="mv-stat-box-num">{{ summary.resolved }}</div>
-      <div class="mv-stat-box-label">Đã xử lý</div>
-    </div>
-    <div class="mv-stat-box">
-      <div class="mv-stat-box-num">{{ summary.closed }}</div>
-      <div class="mv-stat-box-label">Đã đóng</div>
-    </div>
-    <div class="mv-stat-box mv-stat-box-warn">
-      <div class="mv-stat-box-num">{{ summary.overdue }}</div>
-      <div class="mv-stat-box-label">Quá SLA {{ sla_hours }} giờ</div>
-    </div>
-    <div class="mv-stat-box mv-stat-box-warn">
-      <div class="mv-stat-box-num">{{ summary.unassigned }}</div>
-      <div class="mv-stat-box-label">Đang mở, chưa gán</div>
-    </div>
-    <div class="mv-stat-box mv-stat-box-warn">
-      <div class="mv-stat-box-num">{{ summary.high_open }}</div>
-      <div class="mv-stat-box-label">Mức Cao đang mở</div>
-    </div>
+    <div class="mv-stat-box"><div class="mv-stat-box-num">{{ summary.new }}</div><div class="mv-stat-box-label">Mới</div></div>
+    <div class="mv-stat-box"><div class="mv-stat-box-num">{{ summary.in_progress }}</div><div class="mv-stat-box-label">Đang xử lý</div></div>
+    <div class="mv-stat-box"><div class="mv-stat-box-num">{{ summary.resolved }}</div><div class="mv-stat-box-label">Đã xử lý</div></div>
+    <div class="mv-stat-box"><div class="mv-stat-box-num">{{ summary.closed }}</div><div class="mv-stat-box-label">Đã đóng</div></div>
+    <div class="mv-stat-box mv-stat-box-warn"><div class="mv-stat-box-num">{{ summary.overdue }}</div><div class="mv-stat-box-label">Quá SLA {{ sla_hours }} giờ</div></div>
+    <div class="mv-stat-box mv-stat-box-warn"><div class="mv-stat-box-num">{{ summary.unassigned }}</div><div class="mv-stat-box-label">Đang mở, chưa gán</div></div>
+    <div class="mv-stat-box mv-stat-box-warn"><div class="mv-stat-box-num">{{ summary.high_open }}</div><div class="mv-stat-box-label">Mức Cao đang mở</div></div>
   </div>
-  <div style="padding: 0 26px 20px;">
-    <div class="mv-dual-progress">
-      <div class="mv-dual-progress-fill" style="width: {{ summary.done_pct }}%;"></div>
-    </div>
-    <div class="mv-stat-legend" style="margin-top: 8px;">
-      <span class="mv-dot-green"></span> {{ summary.done_pct }}% đã xử lý hoặc đã đóng
-    </div>
+  <div class="px-4 pb-4">
+    <div class="mv-dual-progress"><div class="mv-dual-progress-fill" style="width: {{ summary.done_pct }}%;"></div></div>
+    <div class="mv-stat-legend mt-2"><span class="mv-dot-green"></span> {{ summary.done_pct }}% đã xử lý hoặc đã đóng</div>
   </div>
+</section>
+
+<div class="mv-chart-grid">
+  <section class="mv-card mb-0" aria-labelledby="chart-status-title">
+    <div class="mv-card-header-crimson"><h2 id="chart-status-title">Ticket theo trạng thái</h2></div>
+    <div class="mv-card-body">
+      <div class="mv-chart-box"><canvas id="chart-status" role="img" aria-label="Biểu đồ cột số ticket theo trạng thái"></canvas></div>
+      <table class="mv-table mt-3">
+        <caption class="visually-hidden">Số liệu theo trạng thái</caption>
+        <tbody>
+          {% for row in by_status %}
+            <tr><td>{{ row.status|status_badge }}</td><td class="text-end"><strong>{{ row.total }}</strong> ({{ row.pct }}%)</td></tr>
+          {% empty %}
+            <tr><td class="mv-muted">Chưa có ticket.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mv-card mb-0" aria-labelledby="chart-agent-title">
+    <div class="mv-card-header-crimson"><h2 id="chart-agent-title">Ticket theo người xử lý</h2></div>
+    <div class="mv-card-body">
+      <div class="mv-chart-box"><canvas id="chart-agents" role="img" aria-label="Biểu đồ cột chồng số ticket của từng nhân viên"></canvas></div>
+      <p class="mv-muted mt-3 mb-0">Số liệu chi tiết ở bảng “Theo người xử lý” bên dưới. Theo mức ưu tiên:</p>
+      <table class="mv-table">
+        <caption class="visually-hidden">Số liệu theo mức ưu tiên</caption>
+        <tbody>
+          {% for row in by_priority %}
+            <tr><td>{{ row.priority|priority_badge }}</td><td class="text-end"><strong>{{ row.total }}</strong> ({{ row.pct }}%)</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 </div>
 
-<div class="mv-detail-grid">
-  <div class="mv-card">
-    <div class="mv-card-header-crimson">
-      <h2>Theo trạng thái</h2>
-    </div>
-    <div class="mv-card-body">
-      {% for row in by_status %}
-        <div class="mv-bar-row">
-          <div class="mv-bar-head">
-            {{ row.status|status_badge }}
-            <strong>{{ row.total }} ({{ row.pct }}%)</strong>
-          </div>
-          <div class="mv-bar"><div class="mv-bar-fill" style="width: {{ row.pct }}%;"></div></div>
-        </div>
-      {% empty %}
-        <p style="color: var(--mv-muted);">Chưa có ticket.</p>
-      {% endfor %}
-    </div>
-  </div>
-
-  <div class="mv-card">
-    <div class="mv-card-header-crimson">
-      <h2>Theo mức ưu tiên</h2>
-    </div>
-    <div class="mv-card-body">
-      {% for row in by_priority %}
-        <div class="mv-bar-row">
-          <div class="mv-bar-head">
-            {{ row.priority|priority_badge }}
-            <strong>{{ row.total }} ({{ row.pct }}%)</strong>
-          </div>
-          <div class="mv-bar"><div class="mv-bar-fill" style="width: {{ row.pct }}%;"></div></div>
-        </div>
-      {% empty %}
-        <p style="color: var(--mv-muted);">Chưa có ticket.</p>
-      {% endfor %}
-    </div>
-  </div>
-</div>
-
-<div class="mv-card" style="margin-top: 22px;">
-  <div class="mv-card-header-crimson">
-    <h2>Theo người xử lý</h2>
-  </div>
-  <div style="overflow-x: auto;">
+<section class="mv-card mv-card-gap" aria-labelledby="dash-overdue">
+  <div class="mv-card-header-crimson"><h2 id="dash-overdue">Quá SLA {{ sla_hours }} giờ ({{ summary.overdue }})</h2></div>
+  <div class="table-responsive">
     <table class="mv-table">
       <thead>
-        <tr>
-          <th>Nhân viên</th>
-          <th>Được gán</th>
-          <th>Đang xử lý</th>
-          <th>Đã xử lý</th>
-          <th>Đã đóng</th>
-          <th>Thời gian xử lý TB</th>
-        </tr>
+        <tr><th scope="col">Mã</th><th scope="col">Tiêu đề</th><th scope="col">Trạng thái</th><th scope="col">Ưu tiên</th><th scope="col">Người xử lý</th><th scope="col">Đã mở</th></tr>
+      </thead>
+      <tbody>
+        {% for t in overdue_tickets %}
+          <tr class="mv-overdue-row">
+            <td class="text-nowrap"><a href="{% url 'tickets:detail' t.pk %}" class="mv-ticket-code">{{ t.short_id }}</a></td>
+            <td><a href="{% url 'tickets:detail' t.pk %}">{{ t.title }}</a></td>
+            <td class="text-nowrap">{{ t|status_badge }}</td>
+            <td class="text-nowrap">{{ t|priority_badge }}</td>
+            <td class="text-nowrap">{% if t.assignee %}{{ t.assignee.username }}{% else %}<span class="mv-muted">Chưa gán</span>{% endif %}</td>
+            <td class="text-nowrap mv-overdue-age">{{ t.created_at|timesince }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="mv-empty">Không có ticket nào quá SLA.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if summary.overdue > overdue_tickets|length %}
+    <p class="mv-muted px-4 py-3 mb-0">Đang hiện {{ overdue_tickets|length }} ticket cũ nhất trên tổng {{ summary.overdue }}.</p>
+  {% endif %}
+</section>
+
+<section class="mv-card" aria-labelledby="dash-agents">
+  <div class="mv-card-header-crimson"><h2 id="dash-agents">Theo người xử lý</h2></div>
+  <div class="table-responsive">
+    <table class="mv-table">
+      <thead>
+        <tr><th scope="col">Nhân viên</th><th scope="col">Được gán</th><th scope="col">Đang xử lý</th><th scope="col">Đã xử lý</th><th scope="col">Đã đóng</th><th scope="col">Thời gian xử lý TB</th></tr>
       </thead>
       <tbody>
         {% for agent in agents %}
           <tr>
-            <td>
-              <span class="mv-avatar" style="width: 28px; height: 28px; font-size: 0.7rem;">{{ agent.username|slice:":2" }}</span>
-              <strong>{{ agent.username }}</strong>
-            </td>
+            <td class="text-nowrap"><strong>{{ agent.username }}</strong></td>
             <td>{{ agent.total }}</td>
             <td>{{ agent.in_progress }}</td>
             <td>{{ agent.resolved }}</td>
@@ -117,38 +106,55 @@
             <td>{{ agent.avg_resolve_display }}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="6" style="text-align: center; color: var(--mv-muted);">Chưa có nhân viên hỗ trợ.</td></tr>
+          <tr><td colspan="6" class="mv-empty">Chưa có nhân viên hỗ trợ.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-</div>
+</section>
 
-<div class="mv-card" style="margin-top: 22px;">
-  <div class="mv-card-header-crimson">
-    <h2>Theo danh mục</h2>
-  </div>
-  <div style="overflow-x: auto;">
+<section class="mv-card" aria-labelledby="dash-category">
+  <div class="mv-card-header-crimson"><h2 id="dash-category">Theo danh mục</h2></div>
+  <div class="table-responsive">
     <table class="mv-table">
-      <thead>
-        <tr>
-          <th>Danh mục</th>
-          <th>Tổng</th>
-          <th>Đang mở</th>
-        </tr>
-      </thead>
+      <thead><tr><th scope="col">Danh mục</th><th scope="col">Tổng</th><th scope="col">Đang mở</th></tr></thead>
       <tbody>
         {% for cat in by_category %}
-          <tr>
-            <td><strong>{{ cat.name }}</strong></td>
-            <td>{{ cat.total }}</td>
-            <td>{{ cat.open }}</td>
-          </tr>
+          <tr><td><strong>{{ cat.name }}</strong></td><td>{{ cat.total }}</td><td>{{ cat.open }}</td></tr>
         {% empty %}
-          <tr><td colspan="3" style="text-align: center; color: var(--mv-muted);">Chưa có danh mục.</td></tr>
+          <tr><td colspan="3" class="mv-empty">Chưa có danh mục.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-</div>
+</section>
+
+<section class="mv-card" id="export" aria-labelledby="dash-export">
+  <div class="mv-card-header-crimson"><h2 id="dash-export">Xuất báo cáo Excel</h2></div>
+  <div class="mv-card-body">
+    <form class="mv-export-form" data-export-form
+          data-start-url="{% url 'api-v1-report-export' %}" novalidate>
+      {% csrf_token %}
+      <div class="mv-form-group">
+        <label class="mv-label" for="export-from">Từ ngày</label>
+        <input type="date" id="export-from" name="date_from" value="{{ export_from }}" class="mv-input" required>
+      </div>
+      <div class="mv-form-group">
+        <label class="mv-label" for="export-to">Đến ngày</label>
+        <input type="date" id="export-to" name="date_to" value="{{ export_to }}" class="mv-input" required>
+      </div>
+      <button type="submit" class="mv-btn mv-btn-crimson" data-export-button>Xuất Excel</button>
+    </form>
+    <div class="mv-export-status" data-export-status role="status" aria-live="polite"></div>
+    <noscript><p class="mv-muted">Cần bật JavaScript để xuất Excel từ trang này (hoặc dùng API <code>POST /api/v1/reports/export/</code>).</p></noscript>
+  </div>
+</section>
+
+{{ chart_data|json_script:"dashboard-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous" defer></script>
+<script src="{% static 'js/dashboard.js' %}" defer></script>
+<script src="{% static 'js/export.js' %}" defer></script>
 {% endblock %}

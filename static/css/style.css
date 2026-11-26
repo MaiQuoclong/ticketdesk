@@ -721,7 +721,7 @@ a {
 
 .mv-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 14px;
   padding: 20px 26px;
 }
@@ -1197,4 +1197,68 @@ a {
 .mv-history-change {
   color: var(--mv-crimson);
   margin: 2px 0;
+}
+
+.mv-dash-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.mv-dash-title {
+  font-size: 1.5rem;
+  font-weight: 300;
+  margin: 0;
+}
+
+.mv-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 22px;
+  margin-bottom: 22px;
+}
+
+.mv-chart-box {
+  position: relative;
+  height: 280px;
+}
+
+.mv-export-form {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.mv-export-form .mv-form-group {
+  margin-bottom: 0;
+}
+
+.mv-export-status {
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.mv-export-status.is-error {
+  color: var(--mv-crimson);
+}
+
+.mv-overdue-row td {
+  background: var(--mv-crimson-soft);
+}
+
+.mv-overdue-row td:first-child {
+  border-left: 4px solid var(--mv-crimson);
+}
+
+.mv-overdue-age {
+  color: var(--mv-crimson);
+  font-weight: 700;
+}
+
+.mv-card-gap {
+  margin-top: 22px;
 }
