@@ -178,6 +178,31 @@ class TicketHistorySerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class ReportExportRequestSerializer(serializers.Serializer):
+    MAX_RANGE_DAYS = 366
+
+    date_from = serializers.DateField()
+    date_to = serializers.DateField()
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        if attrs["date_from"] > attrs["date_to"]:
+            raise serializers.ValidationError({"date_to": "Ngày kết thúc phải sau ngày bắt đầu."})
+        if (attrs["date_to"] - attrs["date_from"]).days >= self.MAX_RANGE_DAYS:
+            raise serializers.ValidationError(
+                {"date_to": f"Khoảng thời gian tối đa {self.MAX_RANGE_DAYS} ngày."}
+            )
+        return attrs
+
+
+class ReportExportStatusSerializer(serializers.Serializer):
+    task_id = serializers.CharField(read_only=True)
+    status = serializers.ChoiceField(
+        choices=["pending", "running", "success", "failure"], read_only=True
+    )
+    rows = serializers.IntegerField(read_only=True, allow_null=True)
+    download_url = serializers.CharField(read_only=True, allow_null=True)
+
+
 class DashboardSummarySerializer(serializers.Serializer):
     summary = serializers.DictField(read_only=True)
     by_status = serializers.ListField(child=serializers.DictField(), read_only=True)

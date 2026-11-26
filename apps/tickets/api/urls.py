@@ -6,6 +6,9 @@ from .views import (
     CategoryViewSet,
     DashboardSlaOverdueAPIView,
     DashboardSummaryAPIView,
+    ReportExportAPIView,
+    ReportExportDownloadAPIView,
+    ReportExportStatusAPIView,
     TicketViewSet,
 )
 
@@ -37,6 +40,17 @@ urlpatterns = [
         "dashboard/sla-overdue/",
         DashboardSlaOverdueAPIView.as_view(),
         name="api-dashboard-sla-overdue",
+    ),
+    path("v1/reports/export/", ReportExportAPIView.as_view(), name="api-v1-report-export"),
+    path(
+        "v1/reports/export/<uuid:task_id>/",
+        ReportExportStatusAPIView.as_view(),
+        name="api-v1-report-export-status",
+    ),
+    path(
+        "v1/reports/export/<uuid:task_id>/download/",
+        ReportExportDownloadAPIView.as_view(),
+        name="api-v1-report-export-download",
     ),
     path("", include(router.urls)),
 ]
