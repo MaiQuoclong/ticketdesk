@@ -1,4 +1,5 @@
 import logging
+from contextlib import suppress
 from typing import cast
 from uuid import UUID, uuid4
 
@@ -280,37 +281,7 @@ class DashboardSummaryAPIView(APIView):
     serializer_class = DashboardSummarySerializer
 
     def get(self, request: Request) -> Response:
-        summary = selectors.ticket_summary()
-        total = summary["total"]
-        categories = [
-            {
-                "id": str(cat.id),
-                "name": cat.name,
-                "total": getattr(cat, "total", 0),
-                "open": getattr(cat, "open", 0),
-            }
-            for cat in selectors.tickets_by_category()
-        ]
-        agents = [
-            {
-                "id": str(agent.id),
-                "username": agent.username,
-                "total": getattr(agent, "total", 0),
-                "in_progress": getattr(agent, "in_progress", 0),
-                "resolved": getattr(agent, "resolved", 0),
-                "closed": getattr(agent, "closed", 0),
-                "avg_resolve_display": getattr(agent, "avg_resolve_display", "—"),
-            }
-            for agent in selectors.agent_workload()
-        ]
-        data = {
-            "summary": summary,
-            "by_status": selectors.tickets_by_status(total),
-            "by_priority": selectors.tickets_by_priority(total),
-            "by_category": categories,
-            "agents": agents,
-        }
-        return Response(data, status=status.HTTP_200_OK)
+        return Response(selectors.dashboard_stats(), status=status.HTTP_200_OK)
 
 
 class DashboardSlaOverdueAPIView(generics.ListAPIView):
@@ -367,15 +338,18 @@ class ReportExportAPIView(APIView):
             )
 
         task_id = str(uuid4())
-        cache.set(_export_owner_key(task_id), str(request.user.pk), settings.CELERY_RESULT_EXPIRES)
         try:
+            cache.set(
+                _export_owner_key(task_id), str(request.user.pk), settings.CELERY_RESULT_EXPIRES
+            )
             export_tickets_report.apply_async(
                 args=(str(request.user.pk), date_from.isoformat(), date_to.isoformat()),
                 task_id=task_id,
             )
         except Exception:
             logger.exception("Không đưa được tác vụ xuất báo cáo vào hàng đợi")
-            cache.delete(_export_owner_key(task_id))
+            with suppress(Exception):
+                cache.delete(_export_owner_key(task_id))
             return Response(
                 {
                     "detail": "Hàng đợi tác vụ đang lỗi, vui lòng thử lại sau.",

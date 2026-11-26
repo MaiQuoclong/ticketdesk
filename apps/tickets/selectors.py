@@ -1,6 +1,9 @@
+import logging
+import time
 from datetime import date, timedelta
 from typing import Any
 
+from django.core.cache import cache
 from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Q, QuerySet
 from django.utils import timezone
 
@@ -11,6 +14,12 @@ from .models import Category, Ticket
 OVERDUE_AFTER = timedelta(days=3)
 OPEN_STATUSES = [Ticket.Status.NEW, Ticket.Status.IN_PROGRESS]
 SLA_HOURS = 24
+STATS_CACHE_KEY = "tickets:dashboard-stats"
+STATS_CACHE_TIMEOUT = 300
+CACHE_RETRY_AFTER = 30
+_cache_state = {"down_until": 0.0}
+
+logger = logging.getLogger(__name__)
 
 
 def tickets_created_between(date_from: date, date_to: date) -> QuerySet[Ticket]:
@@ -110,3 +119,65 @@ def agent_workload() -> list[Any]:
     for agent in agents:
         agent.avg_resolve_display = format_duration(agent.avg_resolve)
     return agents
+
+
+def compute_dashboard_stats() -> dict[str, Any]:
+    """Toàn bộ số liệu thống kê dưới dạng dict/list thuần để lưu được vào cache."""
+    summary = ticket_summary()
+    total = summary["total"]
+    return {
+        "summary": summary,
+        "by_status": tickets_by_status(total),
+        "by_priority": tickets_by_priority(total),
+        "by_category": [
+            {
+                "id": str(cat.pk),
+                "name": cat.name,
+                "total": getattr(cat, "total", 0),
+                "open": getattr(cat, "open", 0),
+            }
+            for cat in tickets_by_category()
+        ],
+        "agents": [
+            {
+                "id": str(agent.pk),
+                "username": agent.username,
+                "total": agent.total,
+                "in_progress": agent.in_progress,
+                "resolved": agent.resolved,
+                "closed": agent.closed,
+                "avg_resolve_display": agent.avg_resolve_display,
+            }
+            for agent in agent_workload()
+        ],
+    }
+
+
+def _cache_available() -> bool:
+    return time.monotonic() >= _cache_state["down_until"]
+
+
+def _mark_cache_down(action: str) -> None:
+    _cache_state["down_until"] = time.monotonic() + CACHE_RETRY_AFTER
+    logger.warning(
+        "Cache lỗi khi %s, bỏ qua cache trong %ss", action, CACHE_RETRY_AFTER, exc_info=True
+    )
+
+
+def dashboard_stats() -> dict[str, Any]:
+    """Thống kê dashboard lấy từ cache (5 phút); cache lỗi thì tính trực tiếp từ CSDL."""
+    if not _cache_available():
+        return compute_dashboard_stats()
+    try:
+        stats = cache.get_or_set(STATS_CACHE_KEY, compute_dashboard_stats, STATS_CACHE_TIMEOUT)
+    except Exception:
+        _mark_cache_down("đọc thống kê")
+        return compute_dashboard_stats()
+    return stats if isinstance(stats, dict) else compute_dashboard_stats()
+
+
+def invalidate_stats() -> None:
+    try:
+        cache.delete(STATS_CACHE_KEY)
+    except Exception:
+        _mark_cache_down("xoá thống kê")

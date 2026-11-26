@@ -154,7 +154,7 @@ CACHES = {
         "LOCATION": env("CACHE_URL", default="redis://localhost:6379/1"),
         "TIMEOUT": 300,
         "KEY_PREFIX": "ticketdesk",
-        "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
+        "OPTIONS": {"socket_connect_timeout": 0.5, "socket_timeout": 1},
     }
 }
 
