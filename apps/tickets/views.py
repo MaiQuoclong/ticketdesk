@@ -1,3 +1,4 @@
+import uuid
 from typing import cast
 
 from django.contrib import messages
@@ -24,6 +25,15 @@ from .services import (
 )
 
 
+def _parse_uuid(value: str | None) -> uuid.UUID | None:
+    if not value:
+        return None
+    try:
+        return uuid.UUID(value)
+    except ValueError:
+        return None
+
+
 class TicketQuerysetMixin:
     """Phân quyền dữ liệu trong get_queryset: Khách hàng chỉ thấy ticket của mình."""
 
@@ -48,14 +58,22 @@ class TicketListView(LoginRequiredMixin, TicketQuerysetMixin, ListView):
         status = self.request.GET.get("status")
         priority = self.request.GET.get("priority")
         category = self.request.GET.get("category")
+        assignee = self.request.GET.get("assignee")
         q = (self.request.GET.get("q") or "").strip()
 
         if status in Ticket.Status.values:
             qs = qs.filter(status=status)
         if priority and priority.isdigit():
             qs = qs.filter(priority=int(priority))
-        if category:
-            qs = qs.filter(category_id=category)
+        category_id = _parse_uuid(category)
+        if category_id:
+            qs = qs.filter(category_id=category_id)
+        if self._can_filter_assignee():
+            assignee_id = _parse_uuid(assignee)
+            if assignee == "none":
+                qs = qs.filter(assignee__isnull=True)
+            elif assignee_id:
+                qs = qs.filter(assignee_id=assignee_id)
         if q:
             qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q))
         comments = Comment.objects.filter(ticket=OuterRef("pk"))
@@ -66,6 +84,10 @@ class TicketListView(LoginRequiredMixin, TicketQuerysetMixin, ListView):
         return qs.annotate(
             comment_count=Coalesce(Subquery(comment_count, output_field=IntegerField()), 0)
         )
+
+    def _can_filter_assignee(self) -> bool:
+        user = self.request.user
+        return isinstance(user, User) and user.role != User.Role.CUSTOMER
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -88,6 +110,12 @@ class TicketListView(LoginRequiredMixin, TicketQuerysetMixin, ListView):
         ctx["current_status"] = self.request.GET.get("status", "")
         ctx["current_priority"] = self.request.GET.get("priority", "")
         ctx["current_q"] = self.request.GET.get("q", "")
+        ctx["current_assignee"] = self.request.GET.get("assignee", "")
+        ctx["can_filter_assignee"] = self._can_filter_assignee()
+        if ctx["can_filter_assignee"]:
+            ctx["assignee_choices"] = User.objects.filter(
+                role=User.Role.AGENT, is_active=True
+            ).order_by("username")
         ctx["agents"] = User.objects.filter(role=User.Role.AGENT, is_active=True)[:6]
         return ctx
 

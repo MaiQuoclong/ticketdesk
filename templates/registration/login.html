@@ -2,26 +2,37 @@
 {% block title %}Đăng nhập{% endblock %}
 
 {% block main_container %}
-<div class="mv-login-wrapper">
-  <div class="mv-login-card mv-poly-bg">
-    <h1 class="mv-login-title">TicketDesk</h1>
+<main class="mv-login-wrapper">
+  <section class="mv-login-card mv-poly-bg" aria-labelledby="login-title">
+    <h1 id="login-title" class="mv-login-title">TicketDesk</h1>
     <p class="mv-login-sub">
       Hệ thống tiếp nhận và xử lý yêu cầu hỗ trợ kỹ thuật nội bộ nhanh chóng, minh bạch.
     </p>
 
+    {% include "partials/messages.html" %}
+
     {% if form.errors %}
-      <div style="background: rgba(220, 31, 82, 0.35); border: 1px solid rgba(255,255,255,0.4); padding: 10px 14px; border-radius: 4px; margin-bottom: 22px; font-size: 0.85rem;">
-        Tài khoản hoặc mật khẩu không chính xác. Vui lòng thử lại.
+      <div class="mv-login-error" role="alert">
+        {% if form.non_field_errors %}
+          {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+        {% else %}
+          Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.
+        {% endif %}
       </div>
     {% endif %}
 
     <form method="post" novalidate>
       {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
       <div class="mv-login-field">
-        <input type="text" name="username" placeholder="Tên đăng nhập (Username)" required autofocus>
+        <label for="id_username" class="visually-hidden">Tên đăng nhập</label>
+        <input type="text" name="username" id="id_username" value="{{ form.username.value|default_if_none:"" }}"
+               placeholder="Tên đăng nhập (Username)" autocomplete="username" required autofocus>
       </div>
       <div class="mv-login-field">
-        <input type="password" name="password" placeholder="Mật khẩu (Password)" required>
+        <label for="id_password" class="visually-hidden">Mật khẩu</label>
+        <input type="password" name="password" id="id_password"
+               placeholder="Mật khẩu (Password)" autocomplete="current-password" required>
       </div>
 
       <div class="mv-login-actions">
@@ -30,10 +41,10 @@
       </div>
     </form>
 
-    <div style="margin-top: 30px; font-size: 0.78rem; opacity: 0.82; line-height: 1.6;">
+    <div class="mv-login-hint">
       <strong>Tài khoản mẫu (mật khẩu: <code>matkhau123</code>):</strong><br>
       Quản lý: <code>quanly01</code> · Hỗ trợ: <code>agent01</code> · Khách: <code>khachhang01</code>
     </div>
-  </div>
-</div>
+  </section>
+</main>
 {% endblock %}
