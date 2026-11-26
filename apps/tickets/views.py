@@ -9,6 +9,7 @@ from django.db.models.functions import Coalesce
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.utils.cache import patch_vary_headers
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
@@ -50,8 +51,29 @@ class TicketQuerysetMixin:
 class TicketListView(LoginRequiredMixin, TicketQuerysetMixin, ListView):
     model = Ticket
     template_name = "tickets/ticket_list.html"
+    partial_template_name = "tickets/_table.html"
     context_object_name = "tickets"
     paginate_by = 20
+
+    def is_htmx_partial(self) -> bool:
+        headers = self.request.headers
+        return headers.get("HX-Request") == "true" and not headers.get("HX-History-Restore-Request")
+
+    def handle_no_permission(self):
+        response = super().handle_no_permission()
+        if self.request.headers.get("HX-Request") == "true" and response.status_code == 302:
+            return HttpResponse(status=204, headers={"HX-Redirect": response["Location"]})
+        return response
+
+    def get_template_names(self):
+        if self.is_htmx_partial():
+            return [self.partial_template_name]
+        return super().get_template_names()
+
+    def render_to_response(self, context, **response_kwargs):
+        response = super().render_to_response(context, **response_kwargs)
+        patch_vary_headers(response, ["HX-Request"])
+        return response
 
     def get_queryset(self):
         qs = super().get_queryset()

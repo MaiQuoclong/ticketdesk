@@ -1,5 +1,16 @@
 {% load ticket_tags %}
 <div id="ticket-table">
+  <nav class="mv-tabs" aria-label="Lọc nhanh theo trạng thái">
+    <a href="{% url 'tickets:list' %}" class="mv-tab {% if not current_status %}active{% endif %}">
+      Tất cả ({{ stats.total }})
+    </a>
+    {% for code, label in status_choices %}
+      <a href="{% querystring status=code page=None %}" class="mv-tab {% if current_status == code %}active{% endif %}">
+        {{ label }}
+      </a>
+    {% endfor %}
+  </nav>
+
   <div class="table-responsive">
     <table class="mv-table mv-ticket-table">
       <thead>
@@ -48,10 +59,12 @@
       <span class="mv-muted">Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} ticket</span>
       <div class="d-flex gap-2">
         {% if page_obj.has_previous %}
-          <a href="{% querystring page=page_obj.previous_page_number %}" class="mv-btn mv-btn-ghost">← Trước</a>
+          <a href="{% querystring page=page_obj.previous_page_number %}"
+             hx-get="{% querystring page=page_obj.previous_page_number %}" hx-target="#ticket-table" hx-swap="outerHTML" hx-push-url="true" class="mv-btn mv-btn-ghost">← Trước</a>
         {% endif %}
         {% if page_obj.has_next %}
-          <a href="{% querystring page=page_obj.next_page_number %}" class="mv-btn mv-btn-crimson">Tiếp →</a>
+          <a href="{% querystring page=page_obj.next_page_number %}"
+             hx-get="{% querystring page=page_obj.next_page_number %}" hx-target="#ticket-table" hx-swap="outerHTML" hx-push-url="true" class="mv-btn mv-btn-crimson">Tiếp →</a>
         {% endif %}
       </div>
     </nav>

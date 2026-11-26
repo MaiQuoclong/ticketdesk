@@ -4,7 +4,13 @@
 
 {% block content %}
 <div class="mv-card">
-  <form method="get" class="mv-search-bar" role="search" aria-label="Lọc ticket">
+  <form method="get" action="{% url 'tickets:list' %}" class="mv-search-bar" role="search" aria-label="Lọc ticket"
+        hx-get="{% url 'tickets:list' %}"
+        hx-trigger="input changed delay:300ms from:#f-q, change from:.mv-filter-select, submit"
+        hx-target="#ticket-table"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        hx-indicator="#ticket-loading">
     <label for="f-q" class="visually-hidden">Từ khóa</label>
     <input type="search" id="f-q" name="q" value="{{ current_q }}" class="mv-search-input"
            placeholder="Tìm theo tiêu đề hoặc mô tả...">
@@ -33,6 +39,7 @@
       </select>
     {% endif %}
     <button type="submit" class="mv-btn mv-btn-crimson">Lọc kết quả</button>
+    <span id="ticket-loading" class="mv-loading htmx-indicator" role="status">Đang tải...</span>
     {% if current_q or current_priority or current_status or current_assignee %}
       <a href="{% url 'tickets:list' %}" class="mv-btn mv-btn-ghost">Xóa lọc</a>
     {% endif %}
@@ -87,17 +94,6 @@
       </div>
     </div>
   </div>
-
-  <nav class="mv-tabs">
-    <a href="{% url 'tickets:list' %}" class="mv-tab {% if not current_status %}active{% endif %}">
-      Tất cả ({{ stats.total }})
-    </a>
-    {% for code, label in status_choices %}
-      <a href="{% querystring status=code page=None %}" class="mv-tab {% if current_status == code %}active{% endif %}">
-        {{ label }}
-      </a>
-    {% endfor %}
-  </nav>
 
   {% include "tickets/_table.html" %}
 </div>
