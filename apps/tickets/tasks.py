@@ -1,4 +1,6 @@
+from datetime import date
 from smtplib import SMTPException
+from uuid import uuid4
 
 from celery import shared_task
 from django.core.cache import cache
@@ -7,7 +9,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 
-from . import selectors
+from . import reports, selectors
 from .models import Comment, Ticket
 
 REMINDER_LIST_LIMIT = 50
@@ -125,3 +127,13 @@ def remind_overdue_tickets(hours: int = selectors.SLA_HOURS) -> int:
     except Exception:
         cache.delete(key)
         raise
+
+
+@shared_task(bind=True)
+def export_tickets_report(self, user_id: str, date_from: str, date_to: str) -> dict:
+    """Xuất ticket tạo trong khoảng ngày ra tệp Excel trong MEDIA_ROOT/reports/."""
+    start, end = date.fromisoformat(date_from), date.fromisoformat(date_to)
+    task_id = self.request.id or uuid4().hex
+    name = f"tickets_{start:%Y%m%d}_{end:%Y%m%d}_{task_id[:8]}.xlsx"
+    _, rows = reports.build_tickets_report(start, end, name)
+    return {"file": name, "rows": rows, "user_id": user_id}

@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "544361da-79c4-4aaa-aae2-71b7c80cb23e",
-    "name": "TicketDesk REST API (Tuần 6)",
-    "description": "Bộ request kiểm thử REST API cho hệ thống TicketDesk (JWT Auth, Categories, Tickets, Actions, Comments, Attachments, History, Dashboard, IDOR).",
+    "name": "TicketDesk REST API (Tuần 6–8)",
+    "description": "Bộ request kiểm thử REST API cho hệ thống TicketDesk (JWT Auth, Categories, Tickets, Actions, Comments, Attachments, History, Dashboard, Báo cáo Excel, IDOR).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -32,6 +32,10 @@
     },
     {
       "key": "attachment_id",
+      "value": ""
+    },
+    {
+      "key": "export_task_id",
       "value": ""
     }
   ],
@@ -435,6 +439,71 @@
               }
             ],
             "url": "{{base_url}}/api/v1/dashboard/sla-overdue/?hours=24"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Báo cáo Excel chạy nền (Manager)",
+      "item": [
+        {
+          "name": "Yêu cầu xuất báo cáo Excel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 202) {",
+                  "    pm.collectionVariables.set('export_task_id', pm.response.json().task_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"date_from\": \"2026-11-01\",\n    \"date_to\": \"2026-11-30\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/reports/export/"
+          }
+        },
+        {
+          "name": "Xem trạng thái tác vụ xuất báo cáo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/reports/export/{{export_task_id}}/"
+          }
+        },
+        {
+          "name": "Tải tệp Excel đã xuất",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/reports/export/{{export_task_id}}/download/"
           }
         }
       ]

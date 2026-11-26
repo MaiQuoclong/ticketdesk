@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Q, QuerySet
@@ -11,6 +11,15 @@ from .models import Category, Ticket
 OVERDUE_AFTER = timedelta(days=3)
 OPEN_STATUSES = [Ticket.Status.NEW, Ticket.Status.IN_PROGRESS]
 SLA_HOURS = 24
+
+
+def tickets_created_between(date_from: date, date_to: date) -> QuerySet[Ticket]:
+    """Ticket tạo trong khoảng ngày [date_from, date_to] theo giờ địa phương."""
+    return (
+        Ticket.objects.select_related("created_by", "assignee", "category")
+        .filter(created_at__date__gte=date_from, created_at__date__lte=date_to)
+        .order_by("created_at")
+    )
 
 
 def sla_overdue_tickets(hours: int = SLA_HOURS) -> QuerySet[Ticket]:

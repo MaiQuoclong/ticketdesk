@@ -1,8 +1,15 @@
+import logging
 from typing import cast
+from uuid import UUID, uuid4
 
+from celery.result import AsyncResult
+from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Count, IntegerField, OuterRef, ProtectedError, Subquery
 from django.db.models.functions import Coalesce
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -13,7 +20,7 @@ from rest_framework.serializers import BaseSerializer
 from rest_framework.views import APIView
 
 from apps.accounts.models import User
-from apps.tickets import selectors
+from apps.tickets import reports, selectors
 from apps.tickets.models import Attachment, Category, Comment, Ticket
 from apps.tickets.services import (
     TicketClosedError,
@@ -21,6 +28,7 @@ from apps.tickets.services import (
     assign_ticket,
     change_ticket_status,
 )
+from apps.tickets.tasks import export_tickets_report
 
 from .permissions import (
     IsAgentOrManager,
@@ -35,10 +43,23 @@ from .serializers import (
     CategorySerializer,
     CommentSerializer,
     DashboardSummarySerializer,
+    ReportExportRequestSerializer,
+    ReportExportStatusSerializer,
     TicketAssignSerializer,
     TicketHistorySerializer,
     TicketSerializer,
 )
+
+logger = logging.getLogger(__name__)
+
+XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+EXPORT_STATES = {
+    "PENDING": "pending",
+    "RECEIVED": "pending",
+    "STARTED": "running",
+    "RETRY": "running",
+    "SUCCESS": "success",
+}
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -313,4 +334,91 @@ class DashboardSlaOverdueAPIView(generics.ListAPIView):
         )
         return selectors.sla_overdue_tickets(hours).annotate(
             comment_count=Coalesce(Subquery(comment_count, output_field=IntegerField()), 0)
+        )
+
+
+def _export_owner_key(task_id: str) -> str:
+    return f"reports:export:{task_id}"
+
+
+def _owned_export(request: Request, task_id: UUID) -> AsyncResult:
+    if cache.get(_export_owner_key(str(task_id))) != str(request.user.pk):
+        raise Http404
+    return AsyncResult(str(task_id))
+
+
+class ReportExportAPIView(APIView):
+    """Yêu cầu xuất báo cáo Excel ticket theo khoảng ngày tạo (chạy nền)."""
+
+    permission_classes = [IsManager]
+
+    @extend_schema(
+        request=ReportExportRequestSerializer, responses={202: ReportExportStatusSerializer}
+    )
+    def post(self, request: Request) -> Response:
+        serializer = ReportExportRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        date_from = serializer.validated_data["date_from"]
+        date_to = serializer.validated_data["date_to"]
+        if not selectors.tickets_created_between(date_from, date_to).exists():
+            return Response(
+                {"detail": "Không có dữ liệu trong khoảng thời gian đã chọn.", "code": "no_data"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        task_id = str(uuid4())
+        cache.set(_export_owner_key(task_id), str(request.user.pk), settings.CELERY_RESULT_EXPIRES)
+        try:
+            export_tickets_report.apply_async(
+                args=(str(request.user.pk), date_from.isoformat(), date_to.isoformat()),
+                task_id=task_id,
+            )
+        except Exception:
+            logger.exception("Không đưa được tác vụ xuất báo cáo vào hàng đợi")
+            cache.delete(_export_owner_key(task_id))
+            return Response(
+                {
+                    "detail": "Hàng đợi tác vụ đang lỗi, vui lòng thử lại sau.",
+                    "code": "queue_unavailable",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        data = {"task_id": task_id, "status": "pending", "rows": None, "download_url": None}
+        return Response(data, status=status.HTTP_202_ACCEPTED)
+
+
+class ReportExportStatusAPIView(APIView):
+    """Trạng thái tác vụ xuất báo cáo và đường dẫn tải khi đã xong."""
+
+    permission_classes = [IsManager]
+
+    @extend_schema(responses=ReportExportStatusSerializer)
+    def get(self, request: Request, task_id: UUID) -> Response:
+        result = _owned_export(request, task_id)
+        state = EXPORT_STATES.get(result.state, "failure")
+        data = {"task_id": str(task_id), "status": state, "rows": None, "download_url": None}
+        if state == "success":
+            data["rows"] = result.result["rows"]
+            data["download_url"] = request.build_absolute_uri(
+                f"/api/v1/reports/export/{task_id}/download/"
+            )
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class ReportExportDownloadAPIView(APIView):
+    """Tải tệp Excel của tác vụ xuất báo cáo đã hoàn thành."""
+
+    permission_classes = [IsManager]
+
+    @extend_schema(responses={(200, XLSX_CONTENT_TYPE): bytes})
+    def get(self, request: Request, task_id: UUID) -> FileResponse:
+        result = _owned_export(request, task_id)
+        if result.state != "SUCCESS":
+            raise Http404
+        name = result.result["file"]
+        path = reports.report_path(name)
+        if not path.is_file():
+            raise Http404
+        return FileResponse(
+            path.open("rb"), as_attachment=True, filename=name, content_type=XLSX_CONTENT_TYPE
         )
