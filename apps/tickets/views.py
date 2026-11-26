@@ -4,11 +4,12 @@ from typing import cast
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.db.models import Count, IntegerField, OuterRef, ProtectedError, Q, Subquery
 from django.db.models.functions import Coalesce
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils.cache import patch_vary_headers
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
@@ -16,8 +17,8 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from apps.accounts.models import User
 
 from . import selectors
-from .forms import CommentForm, TicketForm
-from .models import Category, Comment, Ticket, TicketHistory
+from .forms import AttachmentUploadForm, CommentForm, TicketCreateForm, TicketForm
+from .models import Attachment, Category, Comment, Ticket, TicketHistory
 from .services import (
     TicketServiceError,
     add_comment,
@@ -156,22 +157,45 @@ class TicketDetailView(LoginRequiredMixin, TicketQuerysetMixin, DetailView):
         ctx["comments"] = comments_qs
         ctx["histories"] = self.object.histories.select_related("actor")[:20]
         ctx["comment_form"] = CommentForm()
+        ctx["attachments"] = self.object.attachments.select_related("uploaded_by").order_by(
+            "-created_at"
+        )
+        ctx["upload_form"] = AttachmentUploadForm()
         ctx["status_choices"] = Ticket.Status.choices
         if user.role == User.Role.MANAGER:
             ctx["agents"] = User.objects.filter(role=User.Role.AGENT, is_active=True)
         return ctx
 
 
+def _save_attachments(ticket: Ticket, user, files) -> list[Attachment]:
+    return [
+        Attachment.objects.create(
+            ticket=ticket, uploaded_by=user, file=f, original_name=f.name, size=f.size
+        )
+        for f in files
+    ]
+
+
 class TicketCreateView(LoginRequiredMixin, CreateView):
     model = Ticket
-    form_class = TicketForm
+    form_class = TicketCreateForm
     template_name = "tickets/ticket_form.html"
-    success_url = reverse_lazy("tickets:list")
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
-        messages.success(self.request, "Tạo ticket mới thành công!")
-        return super().form_valid(form)
+        with transaction.atomic():
+            response = super().form_valid(form)
+            ticket: Ticket = form.instance
+            saved = _save_attachments(ticket, self.request.user, form.cleaned_data["attachments"])
+        text = f"Đã tạo ticket {ticket.short_id}"
+        if saved:
+            text += f" kèm {len(saved)} tệp đính kèm"
+        messages.success(self.request, text + ".")
+        return response
+
+    def get_success_url(self):
+        ticket = cast(Ticket, self.object)
+        return reverse_lazy("tickets:detail", kwargs={"pk": ticket.pk})
 
 
 class TicketUpdateView(LoginRequiredMixin, TicketQuerysetMixin, UpdateView):
@@ -181,7 +205,8 @@ class TicketUpdateView(LoginRequiredMixin, TicketQuerysetMixin, UpdateView):
 
     def get_success_url(self):
         messages.success(self.request, "Đã cập nhật thông tin ticket.")
-        return reverse_lazy("tickets:detail", kwargs={"pk": self.object.pk})
+        ticket = cast(Ticket, self.object)
+        return reverse_lazy("tickets:detail", kwargs={"pk": ticket.pk})
 
 
 def _get_accessible_ticket(request: HttpRequest, pk) -> Ticket:
@@ -193,6 +218,39 @@ def _get_accessible_ticket(request: HttpRequest, pk) -> Ticket:
     if not ticket:
         raise Http404("Không tìm thấy ticket.")
     return ticket
+
+
+@login_required
+@require_POST
+def ticket_upload_view(request: HttpRequest, pk) -> HttpResponse:
+    ticket = _get_accessible_ticket(request, pk)
+    if ticket.status == Ticket.Status.CLOSED:
+        messages.error(request, "Ticket đã đóng, không thể tải tệp đính kèm.")
+        return redirect("tickets:detail", pk=pk)
+    form = AttachmentUploadForm(request.POST, request.FILES)
+    if form.is_valid():
+        saved = _save_attachments(ticket, request.user, form.cleaned_data["attachments"])
+        messages.success(request, f"Đã tải lên {len(saved)} tệp.")
+    else:
+        for error in form.errors.get("attachments", []):
+            messages.error(request, str(error))
+    return redirect(f"{reverse('tickets:detail', kwargs={'pk': pk})}#tab-attachments")
+
+
+@login_required
+def attachment_download_view(request: HttpRequest, pk) -> FileResponse:
+    qs = Attachment.objects.select_related("ticket")
+    user = request.user
+    if isinstance(user, User) and user.role == User.Role.CUSTOMER:
+        qs = qs.filter(ticket__created_by=user)
+    attachment = qs.filter(pk=pk).first()
+    if not attachment or not attachment.file:
+        raise Http404("Không tìm thấy tệp.")
+    try:
+        handle = attachment.file.open("rb")
+    except FileNotFoundError as exc:
+        raise Http404("Tệp không còn trên máy chủ.") from exc
+    return FileResponse(handle, as_attachment=True, filename=attachment.original_name)
 
 
 @login_required

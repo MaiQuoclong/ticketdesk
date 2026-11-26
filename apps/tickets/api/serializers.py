@@ -4,6 +4,7 @@ from typing import Any
 from rest_framework import serializers
 
 from apps.tickets.models import Attachment, Category, Comment, Ticket, TicketHistory
+from apps.tickets.validators import ALLOWED_EXTENSIONS, MAX_FILE_SIZE
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -117,8 +118,8 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class AttachmentSerializer(serializers.ModelSerializer):
-    MAX_FILE_SIZE = 5 * 1024 * 1024
-    ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "pdf", "docx"}
+    MAX_FILE_SIZE = MAX_FILE_SIZE
+    ALLOWED_EXTENSIONS = set(ALLOWED_EXTENSIONS)
 
     uploaded_by = serializers.CharField(
         source="uploaded_by.username",

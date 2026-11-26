@@ -1,6 +1,37 @@
 from django import forms
 
 from .models import Comment, Ticket
+from .validators import ALLOWED_EXTENSIONS, MAX_FILES_PER_UPLOAD, validate_attachment
+
+ACCEPT_ATTR = ",".join(f".{ext}" for ext in ALLOWED_EXTENSIONS)
+
+
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput(attrs={"accept": ACCEPT_ATTR}))
+        kwargs.setdefault("required", False)
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        files = [f for f in (data if isinstance(data, list | tuple) else [data]) if f]
+        if len(files) > MAX_FILES_PER_UPLOAD:
+            raise forms.ValidationError(f"Chỉ đính kèm tối đa {MAX_FILES_PER_UPLOAD} tệp mỗi lần.")
+        errors = []
+        cleaned = []
+        for f in files:
+            f = super().clean(f, initial)
+            try:
+                validate_attachment(f)
+            except forms.ValidationError as exc:
+                errors.extend(exc.messages)
+            cleaned.append(f)
+        if errors:
+            raise forms.ValidationError(errors)
+        return cleaned
 
 
 class TicketForm(forms.ModelForm):
@@ -30,6 +61,14 @@ class TicketForm(forms.ModelForm):
         if len(title) < 5:
             raise forms.ValidationError("Tiêu đề tối thiểu 5 ký tự.")
         return title
+
+
+class TicketCreateForm(TicketForm):
+    attachments = MultipleFileField(label="Tệp đính kèm")
+
+
+class AttachmentUploadForm(forms.Form):
+    attachments = MultipleFileField(label="Tệp đính kèm", required=True)
 
 
 class CommentForm(forms.ModelForm):

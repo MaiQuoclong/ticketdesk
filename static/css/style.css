@@ -947,3 +947,254 @@ a {
 #ticket-table.htmx-swapping {
   opacity: 0.5;
 }
+
+.mv-form-page {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.mv-form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.mv-field-error {
+  color: var(--mv-crimson);
+  font-size: 0.82rem;
+  margin-top: 5px;
+}
+
+.mv-dropzone {
+  border: 2px dashed #d5d9e2;
+  border-radius: 6px;
+  padding: 22px;
+  background: #fafbfd;
+  text-align: center;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.mv-dropzone.is-dragover {
+  border-color: var(--mv-crimson);
+  background: var(--mv-crimson-soft);
+}
+
+.mv-dropzone-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+
+.mv-dropzone-text small {
+  color: var(--mv-muted);
+}
+
+.mv-link {
+  color: var(--mv-crimson);
+  text-decoration: underline;
+}
+
+.mv-file-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  text-align: left;
+}
+
+.mv-file-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid var(--mv-border);
+  border-radius: 4px;
+  margin-top: 6px;
+  font-size: 0.86rem;
+  word-break: break-all;
+}
+
+.mv-detail-hero {
+  padding: 34px 28px;
+  color: #fff;
+}
+
+.mv-detail-crumb {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+
+.mv-detail-crumb a {
+  color: #fff;
+}
+
+.mv-detail-title {
+  font-weight: 300;
+  font-size: 1.75rem;
+  line-height: 1.3;
+  margin-bottom: 10px;
+  word-break: break-word;
+}
+
+.mv-detail-sub {
+  font-size: 0.84rem;
+  opacity: 0.9;
+}
+
+.mv-detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--mv-border);
+}
+
+.mv-kicker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--mv-muted);
+  text-transform: uppercase;
+}
+
+.mv-detail-status {
+  font-size: 1.25rem;
+  font-weight: 300;
+}
+
+.mv-detail-people {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--mv-border);
+}
+
+.mv-detail-person {
+  font-size: 1.05rem;
+  font-weight: 300;
+  color: var(--mv-crimson);
+  margin-top: 2px;
+}
+
+.mv-section-title {
+  font-weight: 300;
+  font-size: 1.2rem;
+  color: var(--mv-muted);
+  margin-bottom: 10px;
+}
+
+.mv-detail-desc {
+  color: #555b66;
+  white-space: pre-line;
+  font-size: 0.96rem;
+  word-break: break-word;
+}
+
+.mv-detail-tabs {
+  border-bottom: 1px solid var(--mv-border);
+  padding: 0 16px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.mv-detail-tabs .nav-link {
+  color: var(--mv-muted);
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  padding: 16px 14px;
+  white-space: nowrap;
+}
+
+.mv-detail-tabs .nav-link.active,
+.mv-detail-tabs .nav-link:hover {
+  color: var(--mv-crimson);
+  border-bottom-color: var(--mv-crimson);
+}
+
+.mv-comment {
+  display: flex;
+  gap: 14px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--mv-border);
+}
+
+.mv-avatar-crimson {
+  background: var(--mv-crimson);
+}
+
+.mv-comment-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 0.92rem;
+}
+
+.mv-comment-body {
+  font-size: 0.93rem;
+  color: #3c4048;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.mv-internal-tag {
+  background: var(--mv-amber);
+  color: #1f1f1f;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 3px;
+  margin-left: 6px;
+}
+
+.mv-attach-list {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+}
+
+.mv-attach-list li {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--mv-border);
+}
+
+.mv-attach-name {
+  color: var(--mv-crimson);
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.mv-file-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.mv-history-item {
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--mv-border);
+  font-size: 0.86rem;
+}
+
+.mv-history-change {
+  color: var(--mv-crimson);
+  margin: 2px 0;
+}
