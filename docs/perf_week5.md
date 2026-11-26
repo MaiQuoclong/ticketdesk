@@ -4,6 +4,9 @@
 
 | Mục | Giá trị |
 | :--- | :--- |
+| Máy | Laptop Intel Core i7-9750H (6 nhân / 12 luồng, 2,6 GHz), RAM 16 GB, SSD NVMe, Windows 11 Pro |
+| Docker | Docker Desktop 29.9 (WSL 2), cấp 12 CPU / 8 GB RAM; Postgres và ứng dụng chạy cùng máy |
+| Phần mềm | Python 3.13.5, Django 5.2.19, PostgreSQL 16.15 (`postgres:16-alpine`), cấu hình Postgres mặc định |
 | CSDL | PostgreSQL 16 (Docker Compose, container `ticketdesk-db`) |
 | Dữ liệu | 10.004 ticket, 15.020 bình luận (sinh bằng `manage.py seed_tickets`) |
 | Cách đo | Django test `Client` + `CaptureQueriesContext`, lấy thời gian nhỏ nhất của 3 lần, `DEBUG=True` |
@@ -11,6 +14,12 @@
 | Tài khoản | `admin` (xem toàn bộ), `agent01`, `khachhang01` |
 
 Thời gian là thời gian xử lý request phía server trên máy dev, chỉ dùng để so sánh tương đối.
+
+**Phạm vi và hạn chế của số đo:**
+
+- Số chính để đánh giá là **số query**: không phụ thuộc máy, lặp lại được, và được test giữ ngưỡng (`test_ticket_list_query_count_does_not_grow_with_rows`, `django_assert_max_num_queries`). Thời gian (ms) chỉ để so sánh trước/sau trên cùng một máy, cùng dữ liệu, đo liên tiếp.
+- Đo một request tại một thời điểm qua test `Client` (không qua mạng, không qua Gunicorn/Nginx), `DEBUG=True` nên chậm hơn production. Chưa có load test đồng thời (Locust/k6) và chưa đo trên staging — để lại cho giai đoạn triển khai (tuần 13–14 theo giáo trình).
+- Kết quả `EXPLAIN ANALYZE` (Index Scan thay vì Seq Scan) phụ thuộc vào kế hoạch truy vấn của Postgres nên vẫn đúng trên máy khác có cùng dữ liệu; còn thời gian 0,2 ms thì không.
 
 ## 2. Tổng hợp kết quả
 

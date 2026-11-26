@@ -7,6 +7,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.tickets import selectors
 from apps.tickets.models import Category, Comment, Ticket
 
 TITLES = [
@@ -74,6 +75,7 @@ class Command(BaseCommand):
             ]
             Comment.objects.bulk_create(comment_objs, batch_size=1000)
 
+        selectors.invalidate_stats()
         elapsed = time.perf_counter() - start
         self.stdout.write(
             self.style.SUCCESS(

@@ -116,7 +116,10 @@ def test_stats_selectors(setup_data):
     make_ticket(setup_data)
     old = make_ticket(setup_data)
     Ticket.objects.filter(pk=old.pk).update(created_at=now - timedelta(days=5))
-    make_ticket(setup_data, status=Ticket.Status.IN_PROGRESS, assignee=setup_data["agent1"])
+    working = make_ticket(
+        setup_data, status=Ticket.Status.IN_PROGRESS, assignee=setup_data["agent1"]
+    )
+    Ticket.objects.filter(pk=working.pk).update(created_at=now - timedelta(hours=30))
     done = make_ticket(
         setup_data,
         status=Ticket.Status.RESOLVED,
@@ -129,7 +132,8 @@ def test_stats_selectors(setup_data):
     assert summary["total"] == 4
     assert summary["new"] == 2
     assert summary["unassigned"] == 2
-    assert summary["overdue"] == 1
+    assert summary["overdue"] == 2
+    assert summary["overdue"] == selectors.sla_overdue_tickets().count()
     assert summary["done_pct"] == 25
 
     agents = {a.username: a for a in selectors.agent_workload()}

@@ -5,6 +5,7 @@ description = "Hệ thống tiếp nhận và xử lý yêu cầu hỗ trợ n�
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "celery>=5.7.0",
     "django>=5.1,<6.0",
     "django-environ>=0.11.2",
     "django-filter>=26.2",
@@ -12,7 +13,9 @@ dependencies = [
     "djangorestframework>=3.18.3",
     "djangorestframework-simplejwt>=5.5.1",
     "drf-spectacular>=0.30.0",
+    "openpyxl>=3.1.5",
     "psycopg[binary]>=3.3.8",
+    "redis>=8.2.0",
 ]
 
 [dependency-groups]
@@ -28,6 +31,7 @@ dev = [
     "pytest-cov>=7.1.0",
     "pytest-django>=4.9.0",
     "ruff>=0.6.9",
+    "types-openpyxl>=3.1.5.20261122",
 ]
 
 [tool.ruff]
@@ -56,6 +60,7 @@ omit = [
 [tool.coverage.report]
 show_missing = true
 skip_covered = false
+fail_under = 70
 exclude_also = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
@@ -73,7 +78,7 @@ no_implicit_optional = true
 ignore_missing_imports = false
 
 [[tool.mypy.overrides]]
-module = ["factory.*", "environ.*", "debug_toolbar.*", "unfold.*", "django_filters.*", "drf_spectacular.*"]
+module = ["factory.*", "environ.*", "debug_toolbar.*", "unfold.*", "django_filters.*", "drf_spectacular.*", "celery.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
