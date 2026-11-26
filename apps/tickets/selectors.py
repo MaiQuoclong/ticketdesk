@@ -10,6 +10,17 @@ from .models import Category, Ticket
 
 OVERDUE_AFTER = timedelta(days=3)
 OPEN_STATUSES = [Ticket.Status.NEW, Ticket.Status.IN_PROGRESS]
+SLA_HOURS = 24
+
+
+def sla_overdue_tickets(hours: int = SLA_HOURS) -> QuerySet[Ticket]:
+    """Ticket còn mở (Mới / Đang xử lý) đã tạo quá số giờ SLA, cũ nhất lên trước."""
+    cutoff = timezone.now() - timedelta(hours=hours)
+    return (
+        Ticket.objects.select_related("created_by", "assignee", "category")
+        .filter(status__in=OPEN_STATUSES, created_at__lt=cutoff)
+        .order_by("created_at")
+    )
 
 
 def ticket_summary() -> dict:

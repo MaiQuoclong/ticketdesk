@@ -1,9 +1,17 @@
 from smtplib import SMTPException
 
 from celery import shared_task
+from django.core.cache import cache
 from django.core.mail import send_mail
+from django.utils import timezone
 
+from apps.accounts.models import User
+
+from . import selectors
 from .models import Comment, Ticket
+
+REMINDER_LIST_LIMIT = 50
+REMINDER_KEY_TTL = 2 * 24 * 3600
 
 RETRY_OPTIONS = {
     "autoretry_for": (SMTPException, OSError),
@@ -68,3 +76,52 @@ def notify_new_comment(comment_id: str) -> int:
         from_email=None,
         recipient_list=[recipient.email],
     )
+
+
+def _reminder_body(tickets: list[Ticket], total: int, hours: int) -> str:
+    now = timezone.now()
+    lines = [
+        f"Hiện có {total} ticket còn mở quá {hours} giờ chưa được xử lý xong:",
+        "",
+    ]
+    for ticket in tickets:
+        age_hours = int((now - ticket.created_at).total_seconds() // 3600)
+        assignee = ticket.assignee.username if ticket.assignee else "Chưa gán"
+        lines.append(
+            f"- #{ticket.short_id} [{ticket.get_status_display()}] {ticket.title} "
+            f"— {age_hours} giờ — người xử lý: {assignee}"
+        )
+    if total > len(tickets):
+        lines.append(f"... và {total - len(tickets)} ticket khác.")
+    lines += ["", "TicketDesk"]
+    return "\n".join(lines)
+
+
+@shared_task(**RETRY_OPTIONS)
+def remind_overdue_tickets(hours: int = selectors.SLA_HOURS) -> int:
+    """Gửi một email tổng hợp ticket quá hạn SLA cho Manager, tối đa một lần mỗi ngày."""
+    overdue = selectors.sla_overdue_tickets(hours)
+    total = overdue.count()
+    if total == 0:
+        return 0
+    recipients = list(
+        User.objects.filter(role=User.Role.MANAGER, is_active=True)
+        .exclude(email="")
+        .values_list("email", flat=True)
+    )
+    if not recipients:
+        return 0
+
+    key = f"tickets:sla-reminder:{timezone.localdate().isoformat()}"
+    if not cache.add(key, 1, timeout=REMINDER_KEY_TTL):
+        return 0
+    try:
+        return send_mail(
+            subject=f"[TicketDesk] {total} ticket quá hạn SLA {hours} giờ",
+            message=_reminder_body(list(overdue[:REMINDER_LIST_LIMIT]), total, hours),
+            from_email=None,
+            recipient_list=recipients,
+        )
+    except Exception:
+        cache.delete(key)
+        raise

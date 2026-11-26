@@ -2,6 +2,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -147,6 +148,16 @@ SPECTACULAR_SETTINGS = {
 
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("CACHE_URL", default="redis://localhost:6379/1"),
+        "TIMEOUT": 300,
+        "KEY_PREFIX": "ticketdesk",
+        "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
+    }
+}
+
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default=REDIS_URL)
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default=REDIS_URL)
 CELERY_ACCEPT_CONTENT = ["json"]
@@ -162,6 +173,12 @@ CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_BROKER_CONNECTION_TIMEOUT = 2
 CELERY_BROKER_TRANSPORT_OPTIONS = {"socket_connect_timeout": 2}
 CELERY_REDIS_SOCKET_CONNECT_TIMEOUT = 2
+CELERY_BEAT_SCHEDULE = {
+    "remind-overdue-tickets-daily": {
+        "task": "apps.tickets.tasks.remind_overdue_tickets",
+        "schedule": crontab(hour=8, minute=0),
+    },
+}
 CELERY_TASK_PUBLISH_RETRY_POLICY = {
     "max_retries": 2,
     "interval_start": 0,

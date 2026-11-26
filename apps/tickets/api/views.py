@@ -1,10 +1,8 @@
-from datetime import timedelta
 from typing import cast
 
 from django.db.models import Count, IntegerField, OuterRef, ProtectedError, Subquery
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from rest_framework import generics, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -303,8 +301,9 @@ class DashboardSlaOverdueAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         hours_str = str(self.request.GET.get("hours", "24"))
-        hours = int(hours_str) if hours_str.isdigit() and int(hours_str) > 0 else 24
-        cutoff = timezone.now() - timedelta(hours=hours)
+        hours = (
+            int(hours_str) if hours_str.isdigit() and int(hours_str) > 0 else selectors.SLA_HOURS
+        )
         comment_count = (
             Comment.objects.filter(ticket=OuterRef("pk"))
             .order_by()
@@ -312,11 +311,6 @@ class DashboardSlaOverdueAPIView(generics.ListAPIView):
             .annotate(n=Count("id"))
             .values("n")
         )
-        return (
-            Ticket.objects.select_related("created_by", "assignee", "category")
-            .filter(status__in=selectors.OPEN_STATUSES, created_at__lt=cutoff)
-            .annotate(
-                comment_count=Coalesce(Subquery(comment_count, output_field=IntegerField()), 0)
-            )
-            .order_by("created_at")
+        return selectors.sla_overdue_tickets(hours).annotate(
+            comment_count=Coalesce(Subquery(comment_count, output_field=IntegerField()), 0)
         )
