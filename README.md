@@ -29,3 +29,15 @@ uv run python manage.py seed_demo
 uv run python manage.py runserver
 ```
 Vào psql: `docker exec -it ticketdesk-db psql -U ticketdesk`
+
+## Tác vụ nền: Celery, Redis, Mailpit (Tuần 8)
+```bash
+docker compose up -d --wait                         # db, redis, mailpit
+uv run python manage.py runserver
+uv run celery -A config worker -l info --pool=solo  # terminal 2 (Windows cần --pool=solo)
+uv run celery -A config beat -l info                # terminal 3: nhắc SLA 8:00 hằng ngày
+```
+- Email thông báo xem ở Mailpit: http://localhost:8025
+- Xuất Excel: `POST /api/v1/reports/export/` → `GET /api/v1/reports/export/{task_id}/` → `.../download/`
+- Log: `LOG_FORMAT=keyvalue|json`, `LOG_LEVEL=INFO`; trên Windows đặt `PYTHONIOENCODING=utf-8` để log tiếng Việt hiển thị đúng
+- Chi tiết: [docs/background_tasks_week8.md](docs/background_tasks_week8.md)
