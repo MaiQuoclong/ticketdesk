@@ -1,9 +1,15 @@
+import logging
+from typing import Any
+
 from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
 
 from .models import Comment, Ticket, TicketHistory
+from .tasks import notify_new_comment, notify_status_changed
+
+logger = logging.getLogger(__name__)
 
 
 class TicketServiceError(Exception):
@@ -24,6 +30,20 @@ def _sync(target: Ticket, source: Ticket, fields: list[str]) -> None:
         setattr(target, field, getattr(source, field))
 
 
+def _enqueue(task: Any, *args: str) -> None:
+    def send() -> None:
+        try:
+            task.delay(*args)
+        except Exception:
+            logger.exception("Không đưa được tác vụ %s vào hàng đợi", task.name)
+
+    transaction.on_commit(send)
+
+
+def _queue_status_email(ticket: Ticket, old_status: str, actor: User) -> None:
+    _enqueue(notify_status_changed, str(ticket.pk), old_status, ticket.status, str(actor.pk))
+
+
 @transaction.atomic
 def assign_ticket(*, ticket: Ticket, agent: User, actor: User) -> Ticket:
     """Gán người xử lý cho ticket và ghi lại lịch sử thay đổi."""
@@ -34,6 +54,7 @@ def assign_ticket(*, ticket: Ticket, agent: User, actor: User) -> Ticket:
         raise TicketServiceError("Người được gán phải có vai trò Nhân viên hỗ trợ.")
 
     old_assignee = ticket.assignee.username if ticket.assignee else "Chưa gán"
+    old_status_value = ticket.status
     old_status = ticket.get_status_display()
 
     ticket.assignee = agent
@@ -57,6 +78,7 @@ def assign_ticket(*, ticket: Ticket, agent: User, actor: User) -> Ticket:
             old_value=old_status,
             new_value=ticket.get_status_display(),
         )
+        _queue_status_email(ticket, old_status_value, actor)
     return original
 
 
@@ -73,6 +95,7 @@ def change_ticket_status(*, ticket: Ticket, new_status: str, actor: User) -> Tic
     if ticket.status == new_status:
         return original
 
+    old_status_value = ticket.status
     old_display = ticket.get_status_display()
     ticket.status = new_status
     update_fields = ["status", "updated_at"]
@@ -91,6 +114,7 @@ def change_ticket_status(*, ticket: Ticket, new_status: str, actor: User) -> Tic
         old_value=old_display,
         new_value=ticket.get_status_display(),
     )
+    _queue_status_email(ticket, old_status_value, actor)
     return original
 
 
@@ -104,9 +128,12 @@ def add_comment(
         raise TicketClosedError("Ticket đã đóng, không thể thêm bình luận mới.")
 
     internal_flag = is_internal if author.role in (User.Role.AGENT, User.Role.MANAGER) else False
-    return Comment.objects.create(
+    comment = Comment.objects.create(
         ticket=ticket,
         author=author,
         content=content.strip(),
         is_internal=internal_flag,
     )
+    if not comment.is_internal:
+        _enqueue(notify_new_comment, str(comment.pk))
+    return comment
