@@ -1,0 +1,10 @@
+{% if messages %}
+  <div id="messages" class="mv-messages" aria-live="polite">
+    {% for message in messages %}
+      <div class="mv-alert alert alert-dismissible fade show{% if message.tags %} mv-alert-{{ message.tags }}{% endif %}" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
