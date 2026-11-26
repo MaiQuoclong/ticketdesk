@@ -71,6 +71,33 @@ Nguyên tắc chung (theo giáo trình): task **nhận id, không nhận object*
 
 Mỗi lần bỏ qua đều có log `msg="Bỏ qua gửi email" event=<task> reason=<lý do>` để tra được vì sao một người không nhận mail.
 
+### 4.1. Gửi email thật qua Gmail SMTP
+
+Mặc định dev gửi vào Mailpit. Muốn thử gửi tới hộp thư thật:
+
+1. Bật **Xác minh 2 bước** cho tài khoản Google: <https://myaccount.google.com/security>.
+2. Tạo **Mật khẩu ứng dụng** (App Password): <https://myaccount.google.com/apppasswords>, đặt tên `TicketDesk`, chép chuỗi 16 ký tự (bỏ dấu cách).
+3. Trong `.env` (không commit), thay khối email bằng khối Gmail mẫu trong `.env.example`:
+
+```dotenv
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=ten.ban@gmail.com
+EMAIL_HOST_PASSWORD=<app password>
+DEFAULT_FROM_EMAIL=TicketDesk <ten.ban@gmail.com>
+```
+
+4. Kiểm tra kết nối: `uv run python manage.py sendtestemail nguoi.nhan@example.com`.
+5. Khởi động lại worker (worker chỉ đọc `.env` lúc khởi động), rồi đổi trạng thái một ticket có người tạo mang email thật → email đến trong vài giây; log worker có `task=notify_status_changed`.
+6. Thử xong trả `.env` về Mailpit (`EMAIL_HOST=localhost`, `EMAIL_PORT=1025`, `EMAIL_USE_TLS=False`, xoá user/password) và có thể thu hồi App Password.
+
+Lưu ý:
+- `DEFAULT_FROM_EMAIL` phải là chính địa chỉ Gmail đăng nhập, nếu không Gmail tự đổi người gửi.
+- Lỗi `535 Username and Password not accepted` → sai App Password hoặc chưa bật xác minh 2 bước (không dùng mật khẩu Google thường).
+- Gmail giới hạn khoảng 500 thư/ngày cho tài khoản thường; chỉ dùng để thử, không dùng cho môi trường thật. Không chạy `seed_demo`/`seed_tickets` hay Beat nhắc SLA khi `.env` đang trỏ Gmail.
+- Không bao giờ commit `.env` hay dán App Password vào code, issue, PR.
+
 ## 5. Nhắc ticket quá hạn SLA (US-13)
 
 - **Định nghĩa quá hạn SLA** (dùng chung ở một chỗ, `selectors.sla_cutoff` / `sla_overdue_tickets`): ticket **Mới hoặc Đang xử lý** tạo **quá 24 giờ**, đúng kịch bản 2 của US-13 (“quá 24 giờ chưa RESOLVED”).
@@ -156,4 +183,3 @@ uv run pytest --cov=apps --cov-report=term-missing
 
 - **Sentry** (nhắc trong tiêu chí US-12): để tuần triển khai; hiện lỗi task được ghi log ERROR có `task`, `task_id`, `error`.
 - **Upload đính kèm có kiểm tra định dạng/dung lượng** (lịch T5 của giáo trình): đã làm từ tuần 6 (`AttachmentSerializer`: png/jpg/jpeg/pdf/docx, ≤ 5 MB), test trong `test_api.py`.
-- **Gửi email thật qua Gmail SMTP**: commit #9 tuần 8.
