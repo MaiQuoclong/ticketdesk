@@ -473,6 +473,19 @@ a {
 .mv-status-resolved { color: #059669; }
 .mv-status-closed { color: var(--mv-muted); }
 
+.mv-priority {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mv-priority-1 { background: #eef0f4; color: var(--mv-muted); }
+.mv-priority-2 { background: #fff4dc; color: #b7791f; }
+.mv-priority-3 { background: var(--mv-crimson-soft); color: var(--mv-crimson); }
+
 .mv-ticket-item {
   display: flex;
   align-items: center;

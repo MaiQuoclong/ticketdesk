@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load ticket_tags %}
 {% block title %}Thống kê Ticket{% endblock %}
 
 {% block content %}
@@ -55,7 +56,7 @@
       {% for row in by_status %}
         <div class="mv-bar-row">
           <div class="mv-bar-head">
-            <span class="mv-status mv-status-{{ row.status }}">{{ row.label }}</span>
+            {{ row.status|status_badge }}
             <strong>{{ row.total }} ({{ row.pct }}%)</strong>
           </div>
           <div class="mv-bar"><div class="mv-bar-fill" style="width: {{ row.pct }}%;"></div></div>
@@ -74,7 +75,7 @@
       {% for row in by_priority %}
         <div class="mv-bar-row">
           <div class="mv-bar-head">
-            <span>{{ row.label }}</span>
+            {{ row.priority|priority_badge }}
             <strong>{{ row.total }} ({{ row.pct }}%)</strong>
           </div>
           <div class="mv-bar"><div class="mv-bar-fill" style="width: {{ row.pct }}%;"></div></div>
