@@ -325,7 +325,7 @@ def manage_stats_view(request: HttpRequest) -> HttpResponse:
         messages.error(request, "Chỉ Quản lý hoặc Admin mới có quyền xem thống kê.")
         return redirect("tickets:list")
 
-    context = {**selectors.dashboard_stats(), "overdue_days": selectors.OVERDUE_AFTER.days}
+    context = {**selectors.dashboard_stats(), "sla_hours": selectors.SLA_HOURS}
     return render(request, "tickets/manage_stats.html", context)
 
 

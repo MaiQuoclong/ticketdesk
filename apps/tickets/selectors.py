@@ -1,6 +1,6 @@
 import logging
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from django.core.cache import cache
@@ -11,7 +11,6 @@ from apps.accounts.models import User
 
 from .models import Category, Ticket
 
-OVERDUE_AFTER = timedelta(days=3)
 OPEN_STATUSES = [Ticket.Status.NEW, Ticket.Status.IN_PROGRESS]
 SLA_HOURS = 24
 STATS_CACHE_KEY = "tickets:dashboard-stats"
@@ -31,18 +30,21 @@ def tickets_created_between(date_from: date, date_to: date) -> QuerySet[Ticket]:
     )
 
 
+def sla_cutoff(hours: int = SLA_HOURS) -> datetime:
+    return timezone.now() - timedelta(hours=hours)
+
+
 def sla_overdue_tickets(hours: int = SLA_HOURS) -> QuerySet[Ticket]:
     """Ticket còn mở (Mới / Đang xử lý) đã tạo quá số giờ SLA, cũ nhất lên trước."""
-    cutoff = timezone.now() - timedelta(hours=hours)
     return (
         Ticket.objects.select_related("created_by", "assignee", "category")
-        .filter(status__in=OPEN_STATUSES, created_at__lt=cutoff)
+        .filter(status__in=OPEN_STATUSES, created_at__lt=sla_cutoff(hours))
         .order_by("created_at")
     )
 
 
 def ticket_summary() -> dict:
-    overdue_before = timezone.now() - OVERDUE_AFTER
+    """Số liệu tổng quan; `overdue` dùng cùng định nghĩa quá hạn SLA với sla_overdue_tickets."""
     summary = Ticket.objects.aggregate(
         total=Count("id"),
         new=Count("id", filter=Q(status=Ticket.Status.NEW)),
@@ -50,7 +52,7 @@ def ticket_summary() -> dict:
         resolved=Count("id", filter=Q(status=Ticket.Status.RESOLVED)),
         closed=Count("id", filter=Q(status=Ticket.Status.CLOSED)),
         unassigned=Count("id", filter=Q(assignee__isnull=True, status__in=OPEN_STATUSES)),
-        overdue=Count("id", filter=Q(status=Ticket.Status.NEW, created_at__lt=overdue_before)),
+        overdue=Count("id", filter=Q(status__in=OPEN_STATUSES, created_at__lt=sla_cutoff())),
         high_open=Count("id", filter=Q(priority=Ticket.Priority.HIGH, status__in=OPEN_STATUSES)),
     )
     done = summary["resolved"] + summary["closed"]
