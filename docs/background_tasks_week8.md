@@ -97,7 +97,7 @@ Mỗi lần bỏ qua đều có log `msg="Bỏ qua gửi email" event=<task> rea
 - **Xoá cache khi dữ liệu đổi:** `apps/tickets/signals.py` bắt `post_save`/`post_delete` của Ticket, Category, User và gọi `invalidate_stats()` qua `on_commit` (bỏ qua lần lưu chỉ `last_login` khi đăng nhập). Lệnh `seed_tickets` dùng `bulk_create` (không phát signal) nên gọi `invalidate_stats()` trực tiếp.
 - **Redis chết:** đọc/xoá cache lỗi → tính thẳng từ DB, ghi log `event=cache_down` và bỏ qua cache trong 30 s để các request sau không phải chờ timeout (timeout kết nối 0,5 s, đọc 1 s).
 
-Số đo (Django test Client, user `admin`, DB 10.004 ticket, lấy min của 5 lần; đo lại sau commit #7 cho kết quả như nhau):
+Số đo (Django test Client, user `admin`, DB 10.004 ticket, lấy min của 5 lần; đo lại sau commit #7 cho kết quả như nhau). Máy đo giống tuần 5 (i7-9750H, RAM 16 GB, SSD, Windows 11 + Docker Desktop; xem `docs/perf_week5.md` mục 1), thêm Redis 7.4.12 (`redis:7-alpine`) chạy cùng máy. Số query là chỉ số chính, không phụ thuộc máy; thời gian chỉ để so sánh trước/sau trên cùng máy. Chưa có load test đồng thời.
 
 | Trang | Không cache | Có cache | Ghi chú |
 |---|---|---|---|
