@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load ticket_tags %}
 {% block title %}{{ ticket.short_id }} · {{ ticket.title }}{% endblock %}
 
 {% block content %}
@@ -18,30 +17,7 @@
       </header>
 
       <div class="mv-card-body">
-        <div class="mv-detail-head">
-          <div class="d-flex align-items-center gap-3 flex-wrap">
-            <div class="mv-ribbon">
-              <span class="mv-ribbon-label">ƯU TIÊN</span>
-              <span class="mv-ribbon-val">{{ ticket.get_priority_display }}</span>
-            </div>
-            <div>
-              <div class="mv-kicker">Trạng thái hiện tại</div>
-              <div class="mv-detail-status">{{ ticket|status_badge }}</div>
-            </div>
-          </div>
-          <a href="{% url 'tickets:edit' ticket.pk %}" class="mv-btn mv-btn-crimson">Chỉnh sửa Ticket</a>
-        </div>
-
-        <div class="mv-detail-people">
-          <div>
-            <div class="mv-kicker">Người gửi yêu cầu</div>
-            <div class="mv-detail-person">{{ ticket.created_by.username }}</div>
-          </div>
-          <div>
-            <div class="mv-kicker">Nhân viên phụ trách</div>
-            <div class="mv-detail-person">{% if ticket.assignee %}{{ ticket.assignee.username }}{% else %}Chưa phân công{% endif %}</div>
-          </div>
-        </div>
+        {% include "tickets/partials/_summary.html" %}
 
         <section class="py-4">
           <h3 class="mv-section-title">Mô tả chi tiết sự cố</h3>
@@ -54,147 +30,36 @@
       <ul class="nav mv-detail-tabs" role="tablist">
         <li class="nav-item" role="presentation">
           <button class="nav-link active" id="tab-comments-btn" data-bs-toggle="tab" data-bs-target="#tab-comments" type="button" role="tab" aria-controls="tab-comments" aria-selected="true">
-            Bình luận ({{ comments|length }})
+            Bình luận (<span id="count-comments">{{ comments|length }}</span>)
           </button>
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-attachments-btn" data-bs-toggle="tab" data-bs-target="#tab-attachments" type="button" role="tab" aria-controls="tab-attachments" aria-selected="false">
-            Đính kèm ({{ attachments|length }})
+            Đính kèm (<span id="count-attachments">{{ attachments|length }}</span>)
           </button>
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-history-btn" data-bs-toggle="tab" data-bs-target="#tab-history" type="button" role="tab" aria-controls="tab-history" aria-selected="false">
-            Lịch sử ({{ histories|length }})
+            Lịch sử (<span id="count-history">{{ histories|length }}</span>)
           </button>
         </li>
       </ul>
 
       <div class="tab-content mv-card-body">
         <div class="tab-pane fade show active" id="tab-comments" role="tabpanel" aria-labelledby="tab-comments-btn" tabindex="0">
-          {% for c in comments %}
-            <div class="mv-comment">
-              <span class="mv-avatar mv-avatar-crimson">{{ c.author.username|slice:":2" }}</span>
-              <div class="flex-grow-1">
-                <div class="mv-comment-head">
-                  <div>
-                    <strong>{{ c.author.username }}</strong>
-                    <span class="mv-muted">({{ c.author.get_role_display }})</span>
-                    {% if c.is_internal %}<span class="mv-internal-tag">GHI CHÚ NỘI BỘ</span>{% endif %}
-                  </div>
-                  <span class="mv-muted">{{ c.created_at|date:"d/m/Y H:i" }}</span>
-                </div>
-                <div class="mv-comment-body">{{ c.content }}</div>
-              </div>
-            </div>
-          {% empty %}
-            <p class="mv-muted mb-4">Chưa có bình luận nào trên ticket này.</p>
-          {% endfor %}
-
-          {% if ticket.status != 'closed' %}
-            <form method="post" action="{% url 'tickets:add_comment' ticket.pk %}">
-              {% csrf_token %}
-              <div class="mv-form-group">
-                <label for="{{ comment_form.content.id_for_label }}" class="visually-hidden">Nội dung bình luận</label>
-                {{ comment_form.content }}
-              </div>
-              {% if user.role != 'customer' %}
-                <div class="mv-toggle-row">
-                  <label for="{{ comment_form.is_internal.id_for_label }}">
-                    Đánh dấu là <strong>Ghi chú nội bộ</strong> (ẩn với khách hàng)
-                  </label>
-                  {{ comment_form.is_internal }}
-                </div>
-              {% endif %}
-              <button type="submit" class="mv-btn mv-btn-crimson w-100">Gửi phản hồi</button>
-            </form>
-          {% else %}
-            <p class="mv-muted">Ticket đã đóng, không thể bình luận thêm.</p>
-          {% endif %}
+          {% include "tickets/partials/_comments.html" %}
         </div>
-
         <div class="tab-pane fade" id="tab-attachments" role="tabpanel" aria-labelledby="tab-attachments-btn" tabindex="0">
-          <ul class="mv-attach-list">
-            {% for a in attachments %}
-              <li>
-                <a href="{% url 'tickets:attachment_download' a.pk %}" class="mv-attach-name">{{ a.original_name }}</a>
-                <span class="mv-muted">{{ a.size|filesizeformat }} · {{ a.uploaded_by.username|default:"—" }} · {{ a.created_at|date:"d/m/Y H:i" }}</span>
-              </li>
-            {% empty %}
-              <li class="mv-muted">Chưa có tệp đính kèm.</li>
-            {% endfor %}
-          </ul>
-
-          {% if ticket.status != 'closed' %}
-            <form method="post" action="{% url 'tickets:upload' ticket.pk %}" enctype="multipart/form-data" class="mv-upload-inline">
-              {% csrf_token %}
-              <label for="id_attachments" class="mv-label">Thêm tệp (PNG, JPG, PDF, DOCX · ≤ 5 MB)</label>
-              <div class="d-flex gap-2 flex-wrap">
-                <input type="file" name="attachments" id="id_attachments" multiple accept=".png,.jpg,.jpeg,.pdf,.docx" class="form-control mv-file-input" required>
-                <button type="submit" class="mv-btn mv-btn-crimson">Tải lên</button>
-              </div>
-            </form>
-          {% endif %}
+          {% include "tickets/partials/_attachments.html" %}
         </div>
-
         <div class="tab-pane fade" id="tab-history" role="tabpanel" aria-labelledby="tab-history-btn" tabindex="0">
-          {% for h in histories %}
-            <div class="mv-history-item">
-              <div><strong>{{ h.actor.username|default:"Hệ thống" }}</strong> đổi <strong>{{ h.field }}</strong></div>
-              <div class="mv-history-change">{{ h.old_value }} → <strong>{{ h.new_value }}</strong></div>
-              <div class="mv-muted">{{ h.created_at|date:"d/m/Y H:i" }}</div>
-            </div>
-          {% empty %}
-            <p class="mv-muted">Chưa có thay đổi nào được ghi nhận.</p>
-          {% endfor %}
+          {% include "tickets/partials/_history.html" %}
         </div>
       </div>
     </section>
   </div>
 
-  <aside>
-    {% if user.role == 'manager' %}
-      <div class="mv-card">
-        <div class="mv-card-header-crimson"><h2>Phân công xử lý</h2></div>
-        <div class="mv-card-body">
-          <form method="post" action="{% url 'tickets:assign' ticket.pk %}">
-            {% csrf_token %}
-            <div class="mv-form-group">
-              <label class="mv-label" for="f-agent">Chọn nhân viên hỗ trợ (Agent)</label>
-              <select name="agent_id" id="f-agent" class="mv-select" required>
-                <option value="">-- Chọn kỹ thuật viên --</option>
-                {% for ag in agents %}
-                  <option value="{{ ag.pk }}" {% if ticket.assignee_id == ag.pk %}selected{% endif %}>
-                    {{ ag.username }} ({{ ag.email|default:"IT Support" }})
-                  </option>
-                {% endfor %}
-              </select>
-            </div>
-            <button type="submit" class="mv-btn mv-btn-crimson w-100">Gán người xử lý</button>
-          </form>
-        </div>
-      </div>
-    {% endif %}
-
-    {% if user.role != 'customer' %}
-      <div class="mv-card">
-        <div class="mv-card-header-crimson"><h2>Cập nhật trạng thái</h2></div>
-        <div class="mv-card-body">
-          <form method="post" action="{% url 'tickets:change_status' ticket.pk %}">
-            {% csrf_token %}
-            <div class="mv-form-group">
-              <label class="mv-label" for="f-new-status">Trạng thái mới</label>
-              <select name="status" id="f-new-status" class="mv-select">
-                {% for code, label in status_choices %}
-                  <option value="{{ code }}" {% if ticket.status == code %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <button type="submit" class="mv-btn mv-btn-crimson w-100">Lưu trạng thái</button>
-          </form>
-        </div>
-      </div>
-    {% endif %}
-  </aside>
+  {% include "tickets/partials/_actions.html" %}
 </div>
 {% endblock %}
 

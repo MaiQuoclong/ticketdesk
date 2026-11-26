@@ -113,7 +113,7 @@ def test_chi_tiet_co_3_tab(client):
     html = client.get(reverse("tickets:detail", args=[ticket.pk])).content.decode()
     for tab in ["tab-comments", "tab-attachments", "tab-history"]:
         assert f'id="{tab}"' in html
-    assert "Đính kèm (1)" in html
+    assert 'Đính kèm (<span id="count-attachments">1</span>)' in html
     assert "log.png" in html
 
 

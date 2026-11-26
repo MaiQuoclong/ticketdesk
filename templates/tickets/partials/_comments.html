@@ -1,0 +1,42 @@
+<div id="ticket-comments"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% for c in comments %}
+    <div class="mv-comment">
+      <span class="mv-avatar mv-avatar-crimson">{{ c.author.username|slice:":2" }}</span>
+      <div class="flex-grow-1">
+        <div class="mv-comment-head">
+          <div>
+            <strong>{{ c.author.username }}</strong>
+            <span class="mv-muted">({{ c.author.get_role_display }})</span>
+            {% if c.is_internal %}<span class="mv-internal-tag">GHI CHÚ NỘI BỘ</span>{% endif %}
+          </div>
+          <span class="mv-muted">{{ c.created_at|date:"d/m/Y H:i" }}</span>
+        </div>
+        <div class="mv-comment-body">{{ c.content }}</div>
+      </div>
+    </div>
+  {% empty %}
+    <p class="mv-muted mb-4">Chưa có bình luận nào trên ticket này.</p>
+  {% endfor %}
+
+  {% if ticket.status != 'closed' %}
+    <form method="post" action="{% url 'tickets:add_comment' ticket.pk %}"
+          hx-post="{% url 'tickets:add_comment' ticket.pk %}" hx-swap="none" hx-disabled-elt="find button">
+      {% csrf_token %}
+      <div class="mv-form-group">
+        <label for="{{ comment_form.content.id_for_label }}" class="visually-hidden">Nội dung bình luận</label>
+        {{ comment_form.content }}
+      </div>
+      {% if user.role != 'customer' %}
+        <div class="mv-toggle-row">
+          <label for="{{ comment_form.is_internal.id_for_label }}">
+            Đánh dấu là <strong>Ghi chú nội bộ</strong> (ẩn với khách hàng)
+          </label>
+          {{ comment_form.is_internal }}
+        </div>
+      {% endif %}
+      <button type="submit" class="mv-btn mv-btn-crimson w-100">Gửi phản hồi</button>
+    </form>
+  {% else %}
+    <p class="mv-muted">Ticket đã đóng, không thể bình luận thêm.</p>
+  {% endif %}
+</div>

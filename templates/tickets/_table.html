@@ -70,3 +70,4 @@
     </nav>
   {% endif %}
 </div>
+{% if is_htmx %}{% include "tickets/partials/_clear_filter.html" with oob=True %}{% endif %}

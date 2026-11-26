@@ -1,6 +1,8 @@
 import uuid
+from functools import wraps
 from typing import cast
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -134,6 +136,10 @@ class TicketListView(LoginRequiredMixin, TicketQuerysetMixin, ListView):
         ctx["current_priority"] = self.request.GET.get("priority", "")
         ctx["current_q"] = self.request.GET.get("q", "")
         ctx["current_assignee"] = self.request.GET.get("assignee", "")
+        ctx["is_htmx"] = self.is_htmx_partial()
+        ctx["has_filter"] = any(
+            self.request.GET.get(k) for k in ("q", "status", "priority", "assignee", "category")
+        )
         ctx["can_filter_assignee"] = self._can_filter_assignee()
         if ctx["can_filter_assignee"]:
             ctx["assignee_choices"] = User.objects.filter(
@@ -143,6 +149,50 @@ class TicketListView(LoginRequiredMixin, TicketQuerysetMixin, ListView):
         return ctx
 
 
+def _is_htmx(request: HttpRequest) -> bool:
+    return request.headers.get("HX-Request") == "true"
+
+
+def htmx_login_required(view):
+    @wraps(view)
+    def wrapper(request: HttpRequest, *args, **kwargs):
+        if not request.user.is_authenticated and _is_htmx(request):
+            login_url = f"{reverse(settings.LOGIN_URL)}?next={request.path}"
+            return HttpResponse(status=204, headers={"HX-Redirect": login_url})
+        return login_required(view)(request, *args, **kwargs)
+
+    return wrapper
+
+
+def _detail_context(request: HttpRequest, ticket: Ticket, comment_form=None) -> dict:
+    user = cast(User, request.user)
+    comments_qs = ticket.comments.select_related("author")
+    if user.role == User.Role.CUSTOMER:
+        comments_qs = comments_qs.filter(is_internal=False)
+    ctx = {
+        "ticket": ticket,
+        "comments": comments_qs,
+        "histories": ticket.histories.select_related("actor")[:20],
+        "comment_form": comment_form or CommentForm(),
+        "attachments": ticket.attachments.select_related("uploaded_by").order_by("-created_at"),
+        "upload_form": AttachmentUploadForm(),
+        "status_choices": Ticket.Status.choices,
+    }
+    if user.role == User.Role.MANAGER:
+        ctx["agents"] = User.objects.filter(role=User.Role.AGENT, is_active=True)
+    return ctx
+
+
+def _ticket_action_response(request: HttpRequest, pk, comment_form=None) -> HttpResponse:
+    if not _is_htmx(request):
+        return redirect("tickets:detail", pk=pk)
+    ticket = _get_accessible_ticket(request, pk)
+    context = _detail_context(request, ticket, comment_form)
+    response = render(request, "tickets/partials/_ticket_update.html", context)
+    patch_vary_headers(response, ["HX-Request"])
+    return response
+
+
 class TicketDetailView(LoginRequiredMixin, TicketQuerysetMixin, DetailView):
     model = Ticket
     template_name = "tickets/ticket_detail.html"
@@ -150,20 +200,7 @@ class TicketDetailView(LoginRequiredMixin, TicketQuerysetMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        user = cast(User, self.request.user)
-        comments_qs = self.object.comments.select_related("author")
-        if user.role == User.Role.CUSTOMER:
-            comments_qs = comments_qs.filter(is_internal=False)
-        ctx["comments"] = comments_qs
-        ctx["histories"] = self.object.histories.select_related("actor")[:20]
-        ctx["comment_form"] = CommentForm()
-        ctx["attachments"] = self.object.attachments.select_related("uploaded_by").order_by(
-            "-created_at"
-        )
-        ctx["upload_form"] = AttachmentUploadForm()
-        ctx["status_choices"] = Ticket.Status.choices
-        if user.role == User.Role.MANAGER:
-            ctx["agents"] = User.objects.filter(role=User.Role.AGENT, is_active=True)
+        ctx.update(_detail_context(self.request, self.object))
         return ctx
 
 
@@ -253,32 +290,35 @@ def attachment_download_view(request: HttpRequest, pk) -> FileResponse:
     return FileResponse(handle, as_attachment=True, filename=attachment.original_name)
 
 
-@login_required
+@htmx_login_required
 @require_POST
 def ticket_assign_view(request: HttpRequest, pk) -> HttpResponse:
     user = cast(User, request.user)
     if user.role != User.Role.MANAGER:
         messages.error(request, "Chỉ Quản lý mới có quyền gán người xử lý.")
-        return redirect("tickets:detail", pk=pk)
+        return _ticket_action_response(request, pk)
 
     ticket = _get_accessible_ticket(request, pk)
-    agent_id = request.POST.get("agent_id")
-    agent = get_object_or_404(User, pk=agent_id, role=User.Role.AGENT)
+    agent_id = _parse_uuid(request.POST.get("agent_id"))
+    agent = User.objects.filter(pk=agent_id, role=User.Role.AGENT).first() if agent_id else None
+    if agent is None:
+        messages.error(request, "Vui lòng chọn một nhân viên hỗ trợ hợp lệ.")
+        return _ticket_action_response(request, pk)
     try:
         assign_ticket(ticket=ticket, agent=agent, actor=user)
         messages.success(request, f"Đã gán ticket cho nhân viên {agent.username}.")
     except TicketServiceError as exc:
         messages.error(request, str(exc))
-    return redirect("tickets:detail", pk=pk)
+    return _ticket_action_response(request, pk)
 
 
-@login_required
+@htmx_login_required
 @require_POST
 def ticket_status_view(request: HttpRequest, pk) -> HttpResponse:
     user = cast(User, request.user)
     if user.role == User.Role.CUSTOMER:
         messages.error(request, "Khách hàng không được tự đổi trạng thái xử lý.")
-        return redirect("tickets:detail", pk=pk)
+        return _ticket_action_response(request, pk)
 
     ticket = _get_accessible_ticket(request, pk)
     new_status = request.POST.get("status", "")
@@ -287,29 +327,30 @@ def ticket_status_view(request: HttpRequest, pk) -> HttpResponse:
         messages.success(request, f"Đã chuyển trạng thái sang {ticket.get_status_display()}.")
     except TicketServiceError as exc:
         messages.error(request, str(exc))
-    return redirect("tickets:detail", pk=pk)
+    return _ticket_action_response(request, pk)
 
 
-@login_required
+@htmx_login_required
 @require_POST
 def ticket_comment_view(request: HttpRequest, pk) -> HttpResponse:
     user = cast(User, request.user)
     ticket = _get_accessible_ticket(request, pk)
     form = CommentForm(request.POST)
-    if form.is_valid():
-        try:
-            add_comment(
-                ticket=ticket,
-                author=user,
-                content=form.cleaned_data["content"],
-                is_internal=form.cleaned_data.get("is_internal", False),
-            )
-            messages.success(request, "Đã gửi bình luận.")
-        except TicketServiceError as exc:
-            messages.error(request, str(exc))
-    else:
+    if not form.is_valid():
         messages.error(request, "Nội dung bình luận không hợp lệ.")
-    return redirect("tickets:detail", pk=pk)
+        return _ticket_action_response(request, pk, comment_form=form)
+    try:
+        add_comment(
+            ticket=ticket,
+            author=user,
+            content=form.cleaned_data["content"],
+            is_internal=form.cleaned_data.get("is_internal", False),
+        )
+        messages.success(request, "Đã gửi bình luận.")
+    except TicketServiceError as exc:
+        messages.error(request, str(exc))
+        return _ticket_action_response(request, pk, comment_form=form)
+    return _ticket_action_response(request, pk)
 
 
 def _check_manager(request: HttpRequest) -> bool:

@@ -1,0 +1,27 @@
+{% load ticket_tags %}
+<div id="ticket-summary"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <div class="mv-detail-head">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div class="mv-ribbon">
+        <span class="mv-ribbon-label">ƯU TIÊN</span>
+        <span class="mv-ribbon-val">{{ ticket.get_priority_display }}</span>
+      </div>
+      <div>
+        <div class="mv-kicker">Trạng thái hiện tại</div>
+        <div class="mv-detail-status">{{ ticket|status_badge }}</div>
+      </div>
+    </div>
+    <a href="{% url 'tickets:edit' ticket.pk %}" class="mv-btn mv-btn-crimson">Chỉnh sửa Ticket</a>
+  </div>
+
+  <div class="mv-detail-people">
+    <div>
+      <div class="mv-kicker">Người gửi yêu cầu</div>
+      <div class="mv-detail-person">{{ ticket.created_by.username }}</div>
+    </div>
+    <div>
+      <div class="mv-kicker">Nhân viên phụ trách</div>
+      <div class="mv-detail-person">{% if ticket.assignee %}{{ ticket.assignee.username }}{% else %}Chưa phân công{% endif %}</div>
+    </div>
+  </div>
+</div>

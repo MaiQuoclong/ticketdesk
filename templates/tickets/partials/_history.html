@@ -1,0 +1,11 @@
+<div id="ticket-history"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% for h in histories %}
+    <div class="mv-history-item">
+      <div><strong>{{ h.actor.username|default:"Hệ thống" }}</strong> đổi <strong>{{ h.field }}</strong></div>
+      <div class="mv-history-change">{{ h.old_value }} → <strong>{{ h.new_value }}</strong></div>
+      <div class="mv-muted">{{ h.created_at|date:"d/m/Y H:i" }}</div>
+    </div>
+  {% empty %}
+    <p class="mv-muted">Chưa có thay đổi nào được ghi nhận.</p>
+  {% endfor %}
+</div>

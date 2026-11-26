@@ -40,9 +40,7 @@
     {% endif %}
     <button type="submit" class="mv-btn mv-btn-crimson">Lọc kết quả</button>
     <span id="ticket-loading" class="mv-loading htmx-indicator" role="status">Đang tải...</span>
-    {% if current_q or current_priority or current_status or current_assignee %}
-      <a href="{% url 'tickets:list' %}" class="mv-btn mv-btn-ghost">Xóa lọc</a>
-    {% endif %}
+    {% include "tickets/partials/_clear_filter.html" %}
   </form>
 
   <div class="mv-agent-strip">
