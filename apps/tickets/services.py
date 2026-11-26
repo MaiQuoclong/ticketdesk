@@ -35,7 +35,10 @@ def _enqueue(task: Any, *args: str) -> None:
         try:
             task.delay(*args)
         except Exception:
-            logger.exception("Không đưa được tác vụ %s vào hàng đợi", task.name)
+            logger.exception(
+                "Không đưa được tác vụ vào hàng đợi",
+                extra={"event": "enqueue_failed", "task": task.name},
+            )
 
     transaction.on_commit(send)
 

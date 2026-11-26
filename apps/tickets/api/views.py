@@ -347,7 +347,10 @@ class ReportExportAPIView(APIView):
                 task_id=task_id,
             )
         except Exception:
-            logger.exception("Không đưa được tác vụ xuất báo cáo vào hàng đợi")
+            logger.exception(
+                "Không đưa được tác vụ xuất báo cáo vào hàng đợi",
+                extra={"event": "enqueue_failed", "task": export_tickets_report.name},
+            )
             with suppress(Exception):
                 cache.delete(_export_owner_key(task_id))
             return Response(

@@ -160,7 +160,9 @@ def _cache_available() -> bool:
 def _mark_cache_down(action: str) -> None:
     _cache_state["down_until"] = time.monotonic() + CACHE_RETRY_AFTER
     logger.warning(
-        "Cache lỗi khi %s, bỏ qua cache trong %ss", action, CACHE_RETRY_AFTER, exc_info=True
+        "Cache lỗi, tạm bỏ qua cache",
+        extra={"event": "cache_down", "action": action, "retry_after": CACHE_RETRY_AFTER},
+        exc_info=True,
     )
 
 
