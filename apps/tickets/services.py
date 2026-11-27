@@ -1,13 +1,15 @@
 import logging
 from typing import Any
+from uuid import uuid4
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
 
 from .models import Comment, Ticket, TicketHistory
-from .tasks import notify_new_comment, notify_status_changed
+from .tasks import notify_new_comment, notify_status_changed, send_webhook
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,16 @@ def _enqueue(task: Any, *args: str) -> None:
 
 def _queue_status_email(ticket: Ticket, old_status: str, actor: User) -> None:
     _enqueue(notify_status_changed, str(ticket.pk), old_status, ticket.status, str(actor.pk))
+    if settings.WEBHOOK_URL:
+        _enqueue(
+            send_webhook,
+            "ticket.status_changed",
+            str(ticket.pk),
+            uuid4().hex,
+            old_status,
+            ticket.status,
+            str(actor.pk),
+        )
 
 
 @transaction.atomic

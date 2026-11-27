@@ -1,33 +1,57 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}{% if object %}Cập nhật Ticket{% else %}Tạo Ticket mới{% endif %}{% endblock %}
 
 {% block content %}
-<div style="max-width: 680px; margin: 0 auto;">
+<div class="mv-form-page">
   <div class="mv-card">
-    <div class="mv-card-header-crimson" style="display: flex; align-items: center; justify-content: space-between;">
+    <div class="mv-card-header-crimson d-flex align-items-center justify-content-between">
       <h2>{% if object %}Cập nhật {{ object.short_id }}{% else %}Gửi yêu cầu hỗ trợ mới{% endif %}</h2>
       <span class="mv-brand-badge">TD</span>
     </div>
 
     <div class="mv-card-body">
-      <form method="post" novalidate>
+      <form method="post" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
 
+        {% if form.non_field_errors %}
+          <div class="mv-alert mv-alert-error" role="alert">{{ form.non_field_errors|striptags }}</div>
+        {% endif %}
+
         {% for field in form %}
-          <div class="mv-form-group">
-            <label class="mv-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-            {{ field }}
-            {% if field.errors %}
-              <div style="color: var(--mv-crimson); font-size: 0.82rem; margin-top: 5px;">
-                {{ field.errors|striptags }}
+          {% if field.name == "attachments" %}
+            <div class="mv-form-group">
+              <span class="mv-label" id="attach-label">{{ field.label }}</span>
+              <div class="mv-dropzone" data-dropzone data-max-size="5242880" data-max-files="5"
+                   data-accept="png,jpg,jpeg,pdf,docx">
+                <label for="{{ field.id_for_label }}" class="mv-dropzone-text">
+                  <strong>Kéo thả tệp vào đây</strong> hoặc <span class="mv-link">bấm để chọn</span>
+                  <small>PNG, JPG, PDF, DOCX · tối đa 5 tệp, mỗi tệp ≤ 5 MB</small>
+                </label>
+                <input type="file" name="{{ field.html_name }}" id="{{ field.id_for_label }}"
+                       accept=".png,.jpg,.jpeg,.pdf,.docx" multiple class="visually-hidden"
+                       aria-labelledby="attach-label">
+                <ul class="mv-file-list" data-file-list aria-live="polite"></ul>
+                <div class="mv-field-error" data-file-error role="alert"></div>
               </div>
-            {% endif %}
-          </div>
+              {% if field.errors %}
+                <div class="mv-field-error">{% for e in field.errors %}<div>{{ e }}</div>{% endfor %}</div>
+              {% endif %}
+            </div>
+          {% else %}
+            <div class="mv-form-group">
+              <label class="mv-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}
+                <div class="mv-field-error">{{ field.errors|striptags }}</div>
+              {% endif %}
+            </div>
+          {% endif %}
         {% endfor %}
 
-        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 28px;">
-          <a href="{% url 'tickets:list' %}" class="mv-btn mv-btn-ghost">Hủy bỏ</a>
-          <button type="submit" class="mv-btn mv-btn-crimson" style="min-width: 160px;">
+        <div class="mv-form-actions">
+          <a href="{% if object %}{% url 'tickets:detail' object.pk %}{% else %}{% url 'tickets:list' %}{% endif %}" class="mv-btn mv-btn-ghost">Hủy bỏ</a>
+          <button type="submit" class="mv-btn mv-btn-crimson">
             {% if object %}Lưu thay đổi{% else %}Gửi yêu cầu{% endif %}
           </button>
         </div>
@@ -35,4 +59,8 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+  {% if not object %}<script src="{% static 'js/attachments.js' %}" defer></script>{% endif %}
 {% endblock %}

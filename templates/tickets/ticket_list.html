@@ -1,31 +1,46 @@
 {% extends "base.html" %}
+{% load ticket_tags %}
 {% block title %}Danh sách Ticket{% endblock %}
 
 {% block content %}
 <div class="mv-card">
-  <form method="get" class="mv-search-bar">
-    <input
-      type="search"
-      name="q"
-      value="{{ current_q }}"
-      class="mv-search-input"
-      placeholder="Tìm kiếm ticket theo tiêu đề hoặc mô tả..."
-    >
-    <select name="priority" class="mv-select" style="width: auto; min-width: 150px;">
-      <option value="">Tất cả độ ưu tiên</option>
-      {% for val, label in priority_choices %}
-        <option value="{{ val }}" {% if current_priority == val|stringformat:"s" %}selected{% endif %}>
-          Ưu tiên: {{ label }}
-        </option>
+  <form method="get" action="{% url 'tickets:list' %}" class="mv-search-bar" role="search" aria-label="Lọc ticket"
+        hx-get="{% url 'tickets:list' %}"
+        hx-trigger="input changed delay:300ms from:#f-q, change from:.mv-filter-select, submit"
+        hx-target="#ticket-table"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        hx-indicator="#ticket-loading">
+    <label for="f-q" class="visually-hidden">Từ khóa</label>
+    <input type="search" id="f-q" name="q" value="{{ current_q }}" class="mv-search-input"
+           placeholder="Tìm theo tiêu đề hoặc mô tả...">
+    <label for="f-status" class="visually-hidden">Trạng thái</label>
+    <select id="f-status" name="status" class="mv-select mv-filter-select">
+      <option value="">Tất cả trạng thái</option>
+      {% for code, label in status_choices %}
+        <option value="{{ code }}" {% if current_status == code %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
-    {% if current_status %}
-      <input type="hidden" name="status" value="{{ current_status }}">
+    <label for="f-priority" class="visually-hidden">Độ ưu tiên</label>
+    <select id="f-priority" name="priority" class="mv-select mv-filter-select">
+      <option value="">Tất cả độ ưu tiên</option>
+      {% for val, label in priority_choices %}
+        <option value="{{ val }}" {% if current_priority == val|stringformat:"s" %}selected{% endif %}>Ưu tiên: {{ label }}</option>
+      {% endfor %}
+    </select>
+    {% if can_filter_assignee %}
+      <label for="f-assignee" class="visually-hidden">Người xử lý</label>
+      <select id="f-assignee" name="assignee" class="mv-select mv-filter-select">
+        <option value="">Tất cả người xử lý</option>
+        <option value="none" {% if current_assignee == "none" %}selected{% endif %}>Chưa gán</option>
+        {% for agent in assignee_choices %}
+          <option value="{{ agent.pk }}" {% if current_assignee == agent.pk|stringformat:"s" %}selected{% endif %}>{{ agent.username }}</option>
+        {% endfor %}
+      </select>
     {% endif %}
     <button type="submit" class="mv-btn mv-btn-crimson">Lọc kết quả</button>
-    {% if current_q or current_priority or current_status %}
-      <a href="{% url 'tickets:list' %}" class="mv-btn mv-btn-ghost">Xóa lọc</a>
-    {% endif %}
+    <span id="ticket-loading" class="mv-loading htmx-indicator" role="status">Đang tải...</span>
+    {% include "tickets/partials/_clear_filter.html" %}
   </form>
 
   <div class="mv-agent-strip">
@@ -78,76 +93,6 @@
     </div>
   </div>
 
-  <nav class="mv-tabs">
-    <a href="{% url 'tickets:list' %}" class="mv-tab {% if not current_status %}active{% endif %}">
-      Tất cả ({{ stats.total }})
-    </a>
-    {% for code, label in status_choices %}
-      <a href="?status={{ code }}" class="mv-tab {% if current_status == code %}active{% endif %}">
-        {{ label }}
-      </a>
-    {% endfor %}
-  </nav>
-
-  <div>
-    {% for ticket in tickets %}
-      <div class="mv-ticket-item">
-        <div class="mv-ticket-main">
-          <div class="mv-ribbon">
-            <span class="mv-ribbon-label">MỨC</span>
-            <span class="mv-ribbon-val">P{{ ticket.priority }}</span>
-          </div>
-
-          <div>
-            <a href="{% url 'tickets:detail' ticket.pk %}" class="mv-ticket-title">
-              <strong>{{ ticket.short_id }}</strong> — {{ ticket.title }}
-            </a>
-            <div class="mv-ticket-meta">
-              <span>Danh mục: <strong>{{ ticket.category.name }}</strong></span>
-              <span>Người tạo: <strong>{{ ticket.created_by.username }}</strong></span>
-              <span>Bình luận: <strong>{{ ticket.comment_count }}</strong></span>
-              <span>
-                Phụ trách:
-                <strong>{% if ticket.assignee %}{{ ticket.assignee.username }}{% else %}Chưa gán{% endif %}</strong>
-              </span>
-              <span>{{ ticket.created_at|date:"d/m/Y H:i" }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div style="display: flex; align-items: center; gap: 16px;">
-          <span class="mv-status mv-status-{{ ticket.status }}">
-            {{ ticket.get_status_display }}
-          </span>
-          <a href="{% url 'tickets:detail' ticket.pk %}" class="mv-btn mv-btn-crimson" style="padding: 7px 16px; font-size: 0.8rem;">
-            Chi tiết
-          </a>
-        </div>
-      </div>
-    {% empty %}
-      <div style="padding: 48px 26px; text-align: center; color: var(--mv-muted);">
-        Chưa có ticket nào phù hợp với bộ lọc hiện tại.
-        <div style="margin-top: 14px;">
-          <a href="{% url 'tickets:create' %}" class="mv-btn mv-btn-crimson">+ Tạo ticket đầu tiên</a>
-        </div>
-      </div>
-    {% endfor %}
-  </div>
-
-  {% if is_paginated %}
-    <div style="padding: 18px 26px; display: flex; justify-content: space-between; align-items: center;">
-      <span style="font-size: 0.85rem; color: var(--mv-muted);">
-        Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
-      </span>
-      <div style="display: flex; gap: 8px;">
-        {% if page_obj.has_previous %}
-          <a href="?page={{ page_obj.previous_page_number }}" class="mv-btn mv-btn-ghost">← Trước</a>
-        {% endif %}
-        {% if page_obj.has_next %}
-          <a href="?page={{ page_obj.next_page_number }}" class="mv-btn mv-btn-crimson">Tiếp →</a>
-        {% endif %}
-      </div>
-    </div>
-  {% endif %}
+  {% include "tickets/_table.html" %}
 </div>
 {% endblock %}
