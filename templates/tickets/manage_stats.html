@@ -75,7 +75,7 @@
             <td class="text-nowrap">{{ t|status_badge }}</td>
             <td class="text-nowrap">{{ t|priority_badge }}</td>
             <td class="text-nowrap">{% if t.assignee %}{{ t.assignee.username }}{% else %}<span class="mv-muted">Chưa gán</span>{% endif %}</td>
-            <td class="text-nowrap mv-overdue-age">{{ t.created_at|timesince }}</td>
+            <td class="text-nowrap mv-overdue-age">{{ t.created_at|open_age }}</td>
           </tr>
         {% empty %}
           <tr><td colspan="6" class="mv-empty">Không có ticket nào quá SLA.</td></tr>

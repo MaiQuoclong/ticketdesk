@@ -1,7 +1,11 @@
+from datetime import datetime
+
 from django import template
+from django.utils import timezone
 from django.utils.html import format_html
 
 from apps.tickets.models import Ticket
+from apps.tickets.selectors import format_duration
 
 register = template.Library()
 
@@ -52,3 +56,10 @@ def priority_badge(value):
         code,
         PRIORITY_LABELS[code],
     )
+
+
+@register.filter
+def open_age(value: datetime | None) -> str:
+    if value is None:
+        return format_duration(None)
+    return format_duration(timezone.now() - value)

@@ -500,6 +500,18 @@ a {
   background: #fafbfe;
 }
 
+.mv-user-row-info {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mv-user-row-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
 .mv-ticket-main {
   display: flex;
   align-items: flex-start;
@@ -705,6 +717,10 @@ a {
   gap: 24px;
 }
 
+.mv-detail-grid > * {
+  min-width: 0;
+}
+
 @media (max-width: 860px) {
   .mv-detail-grid {
     grid-template-columns: 1fr;
@@ -828,6 +844,59 @@ a {
   .mv-nav-menu .nav-item + .nav-item {
     border-left: 1px solid rgba(255, 255, 255, 0.38);
     padding-left: 16px;
+  }
+}
+
+@media (min-width: 1200px) and (max-width: 1799.98px) {
+  .mv-navbar-inner {
+    padding: 0 20px;
+    gap: 12px;
+  }
+
+  .mv-navbar .navbar-collapse {
+    gap: 12px;
+  }
+
+  .mv-nav-menu {
+    gap: 4px;
+  }
+
+  .mv-nav-menu .nav-item + .nav-item {
+    padding-left: 4px;
+  }
+
+  .mv-navbar .nav-link.mv-nav-link {
+    padding: 8px 8px;
+    font-size: 0.86rem;
+  }
+
+  .mv-nav-actions {
+    gap: 8px;
+  }
+
+  .mv-user-pill {
+    padding: 4px;
+  }
+
+  .mv-user-info {
+    display: none;
+  }
+}
+
+@media (min-width: 1200px) and (max-width: 1279.98px) {
+  .mv-navbar-inner,
+  .mv-navbar .navbar-collapse {
+    gap: 8px;
+  }
+
+  .mv-navbar .nav-link.mv-nav-link {
+    padding: 8px 5px;
+    font-size: 0.82rem;
+  }
+
+  .mv-nav-actions .mv-btn {
+    padding-left: 10px;
+    padding-right: 10px;
   }
 }
 

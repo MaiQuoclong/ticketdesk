@@ -1,10 +1,14 @@
+from datetime import timedelta
+
 import pytest
 from django.template import Context, RequestContext, Template
 from django.test import RequestFactory
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.tickets.models import Ticket
 from apps.tickets.templatetags.ticket_tags import (
+    open_age,
     priority_badge,
     priority_label,
     status_badge,
@@ -83,3 +87,20 @@ def test_trang_thong_ke_dung_badge(client):
     html = client.get(reverse("tickets:manage_stats")).content.decode()
     assert '<span class="mv-status mv-status-in_progress">Đang xử lý</span>' in html
     assert "mv-priority-2" in html
+
+
+@pytest.mark.parametrize(
+    ("age", "expected"),
+    [
+        (timedelta(days=105, hours=3, minutes=5), "105 ngày 3 giờ"),
+        (timedelta(hours=26), "1 ngày 2 giờ"),
+        (timedelta(hours=5, minutes=59), "5 giờ"),
+        (timedelta(minutes=10), "< 1 giờ"),
+    ],
+)
+def test_open_age_hien_tieng_viet(age, expected):
+    assert open_age(timezone.now() - age) == expected
+
+
+def test_open_age_none():
+    assert open_age(None) == "—"
