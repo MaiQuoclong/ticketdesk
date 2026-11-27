@@ -1,11 +1,17 @@
+import hashlib
+import hmac
+import json
 import logging
 from datetime import date
 from smtplib import SMTPException
 from typing import Any
+from urllib import request as urllib_request
+from urllib.error import HTTPError, URLError
 from uuid import uuid4
 
 from celery import shared_task
 from celery.signals import task_failure, task_retry
+from django.conf import settings
 from django.core.cache import cache
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -195,3 +201,96 @@ def export_tickets_report(self, user_id: str, date_from: str, date_to: str) -> d
         extra={"event": "export_tickets_report", "task_id": task_id, "rows": rows, "file": name},
     )
     return {"file": name, "rows": rows, "user_id": user_id}
+
+
+WEBHOOK_SENT_TTL = 7 * 24 * 3600
+WEBHOOK_SIGNATURE_HEADER = "X-TicketDesk-Signature"
+
+
+class WebhookServerError(Exception):
+    """Máy nhận webhook trả lỗi 5xx, cần thử lại."""
+
+
+def webhook_signature(body: bytes, secret: str) -> str:
+    """Chữ ký HMAC-SHA256 của thân request, dạng sha256=<hex>."""
+    digest = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return f"sha256={digest}"
+
+
+def _webhook_payload(
+    event: str,
+    event_id: str,
+    ticket: Ticket,
+    old_status: str,
+    new_status: str,
+    actor_id: str | None,
+) -> dict[str, Any]:
+    return {
+        "event": event,
+        "event_id": event_id,
+        "occurred_at": timezone.now().isoformat(),
+        "ticket": {
+            "id": str(ticket.pk),
+            "short_id": ticket.short_id,
+            "title": ticket.title,
+            "old_status": old_status,
+            "new_status": new_status,
+            "assignee_id": str(ticket.assignee_id) if ticket.assignee_id else None,
+        },
+        "actor_id": actor_id,
+    }
+
+
+@shared_task(
+    autoretry_for=(WebhookServerError, URLError, TimeoutError),
+    retry_backoff=30,
+    retry_backoff_max=600,
+    retry_jitter=True,
+    max_retries=5,
+    ignore_result=True,
+)
+def send_webhook(
+    event: str,
+    ticket_id: str,
+    event_id: str,
+    old_status: str,
+    new_status: str,
+    actor_id: str | None = None,
+) -> int:
+    """POST sự kiện ticket tới WEBHOOK_URL, ký HMAC-SHA256, mỗi event_id chỉ gửi một lần."""
+    url = settings.WEBHOOK_URL
+    if not url:
+        return 0
+    log = {"event": "send_webhook", "webhook_event": event, "event_id": event_id}
+    key = f"tickets:webhook-sent:{event_id}"
+    if cache.get(key):
+        logger.info("Bỏ qua webhook đã gửi", extra={**log, "reason": "already_sent"})
+        return 0
+    ticket = Ticket.objects.filter(pk=ticket_id).first()
+    if ticket is None:
+        logger.info("Bỏ qua webhook", extra={**log, "reason": "ticket_not_found"})
+        return 0
+
+    payload = _webhook_payload(event, event_id, ticket, old_status, new_status, actor_id)
+    body = json.dumps(payload, ensure_ascii=False).encode()
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "TicketDesk-Webhook/1.0",
+        "X-TicketDesk-Event": event,
+        "X-TicketDesk-Event-Id": event_id,
+    }
+    if settings.WEBHOOK_SECRET:
+        headers[WEBHOOK_SIGNATURE_HEADER] = webhook_signature(body, settings.WEBHOOK_SECRET)
+    req = urllib_request.Request(url, data=body, headers=headers, method="POST")
+    try:
+        with urllib_request.urlopen(req, timeout=settings.WEBHOOK_TIMEOUT) as response:
+            status = response.status
+    except HTTPError as error:
+        if error.code >= 500:
+            raise WebhookServerError(f"HTTP {error.code}") from error
+        logger.warning("Webhook bị từ chối, không thử lại", extra={**log, "status": error.code})
+        return 0
+
+    cache.set(key, 1, timeout=WEBHOOK_SENT_TTL)
+    logger.info("Đã gửi webhook", extra={**log, "status": status})
+    return 1

@@ -196,6 +196,10 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="TicketDesk <no-reply@ticketdesk.local>")
 
+WEBHOOK_URL = env("WEBHOOK_URL", default="")
+WEBHOOK_SECRET = env("WEBHOOK_SECRET", default="")
+WEBHOOK_TIMEOUT = env.int("WEBHOOK_TIMEOUT", default=5)
+
 LOG_LEVEL = env("LOG_LEVEL", default="INFO")
 LOG_FORMAT = env("LOG_FORMAT", default="keyvalue")
 

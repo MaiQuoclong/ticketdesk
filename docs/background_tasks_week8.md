@@ -58,6 +58,7 @@ uv run celery -A config beat -l info
 | `notify_status_changed` | `services.assign_ticket`, `services.change_ticket_status` | `ticket_id`, `old_status`, `new_status`, `actor_id` | `SMTPException`, `OSError`; tối đa 5 lần; chờ 30 s tăng dần tới 600 s, có jitter | Gửi 1 mail cho mỗi lần đổi trạng thái |
 | `notify_new_comment` | `services.add_comment` | `comment_id` | như trên | Ghi chú nội bộ không đẩy task |
 | `remind_overdue_tickets` | Celery Beat, 8:00 hằng ngày | `hours=24` | như trên | Khoá theo ngày `tickets:sla-reminder:<YYYY-MM-DD>` (`cache.add`, giữ 2 ngày) |
+| `send_webhook` | `services.assign_ticket`, `services.change_ticket_status` (chỉ khi `WEBHOOK_URL` khác rỗng) | `event`, `ticket_id`, `event_id`, `old_status`, `new_status`, `actor_id` | Lỗi mạng/timeout/HTTP 5xx; tối đa 5 lần, chờ 30 s tăng dần tới 600 s; **không** thử lại HTTP 4xx | Khoá `tickets:webhook-sent:<event_id>` (giữ 7 ngày) sau khi gửi thành công |
 | `export_tickets_report` | `POST /api/v1/reports/export/` | `user_id`, `date_from`, `date_to` | Không (lỗi trả `failure` cho người dùng) | Mỗi yêu cầu một `task_id`, tên file chứa 8 ký tự đầu của id |
 
 Nguyên tắc chung (theo giáo trình): task **nhận id, không nhận object**; giới hạn thời gian `CELERY_TASK_TIME_LIMIT=300 s` (soft 240 s); `acks_late` + `prefetch_multiplier=1` để worker chết giữa chừng thì task được giao lại; task email `ignore_result=True` để không ghi kết quả thừa vào Redis.
@@ -183,3 +184,53 @@ uv run pytest --cov=apps --cov-report=term-missing
 
 - **Sentry** (nhắc trong tiêu chí US-12): để tuần triển khai; hiện lỗi task được ghi log ERROR có `task`, `task_id`, `error`.
 - **Upload đính kèm có kiểm tra định dạng/dung lượng** (lịch T5 của giáo trình): đã làm từ tuần 6 (`AttachmentSerializer`: png/jpg/jpeg/pdf/docx, ≤ 5 MB), test trong `test_api.py`.
+
+## 12. Webhook khi ticket đổi trạng thái (bổ sung tuần 9)
+
+Mỗi lần ticket đổi trạng thái (gán làm ticket Mới chuyển sang Đang xử lý, hoặc đổi trạng thái), service gọi `send_webhook` trong `transaction.on_commit`. Task này POST JSON tới hệ thống ngoài, ví dụ Slack bridge hoặc CRM.
+
+Cấu hình trong `.env`:
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `WEBHOOK_URL` | rỗng | Địa chỉ nhận. Để rỗng thì tắt hẳn, không đẩy task |
+| `WEBHOOK_SECRET` | rỗng | Khoá ký HMAC-SHA256. Rỗng thì không gửi header chữ ký |
+| `WEBHOOK_TIMEOUT` | 5 | Số giây chờ phản hồi |
+
+Request gửi đi:
+
+```
+POST <WEBHOOK_URL>
+Content-Type: application/json
+X-TicketDesk-Event: ticket.status_changed
+X-TicketDesk-Event-Id: 3f2c...
+X-TicketDesk-Signature: sha256=<hex HMAC-SHA256 của thân request>
+
+{"event": "ticket.status_changed", "event_id": "3f2c...", "occurred_at": "2026-11-27T07:22:02+00:00",
+ "ticket": {"id": "...", "short_id": "...", "title": "...", "old_status": "new",
+            "new_status": "in_progress", "assignee_id": "..."},
+ "actor_id": "..."}
+```
+
+Phía nhận kiểm chữ ký trên **thân request thô** (chưa parse JSON):
+
+```python
+import hashlib, hmac
+
+
+def verify(body: bytes, header: str, secret: str) -> bool:
+    expected = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, header)
+```
+
+Thử lại và chống gửi trùng:
+- Lỗi mạng, timeout hoặc HTTP 5xx thì thử lại tối đa 5 lần, giãn cách tăng dần.
+- HTTP 4xx (sai địa chỉ, sai chữ ký) thì ghi log WARNING và không thử lại.
+- Gửi thành công thì đánh dấu `event_id` trong cache 7 ngày. Task chạy lại cùng `event_id` (do retry hoặc `acks_late`) sẽ bỏ qua. Phía nhận cũng nên khử trùng theo header `X-TicketDesk-Event-Id`.
+
+Cách thử:
+- Dùng https://webhook.site: đặt `WEBHOOK_URL` bằng URL nó cấp, chạy worker và runserver, rồi đổi trạng thái một ticket.
+- Hoặc dựng server nhận local bằng `http.server` và kiểm chữ ký bằng hàm `verify` ở trên. Đã thử ngày 27/11/2026: phía nhận kiểm chữ ký đúng và trả 200; chạy lại cùng `event_id` thì task bỏ qua (`reason=already_sent`).
+
+Test: `apps/tickets/tests/test_webhook.py` (13 test) gồm ký đúng, không ký khi thiếu secret, tắt khi không cấu hình, gửi trùng, 4xx không thử lại, 5xx/lỗi mạng/timeout có thử lại, và service đẩy task trong `on_commit`.
+

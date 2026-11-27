@@ -1,0 +1,23 @@
+<div id="ticket-attachments"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <ul class="mv-attach-list">
+    {% for a in attachments %}
+      <li>
+        <a href="{% url 'tickets:attachment_download' a.pk %}" class="mv-attach-name">{{ a.original_name }}</a>
+        <span class="mv-muted">{{ a.size|filesizeformat }} · {{ a.uploaded_by.username|default:"—" }} · {{ a.created_at|date:"d/m/Y H:i" }}</span>
+      </li>
+    {% empty %}
+      <li class="mv-muted">Chưa có tệp đính kèm.</li>
+    {% endfor %}
+  </ul>
+
+  {% if ticket.status != 'closed' %}
+    <form method="post" action="{% url 'tickets:upload' ticket.pk %}" enctype="multipart/form-data" class="mv-upload-inline">
+      {% csrf_token %}
+      <label for="id_attachments" class="mv-label">Thêm tệp (PNG, JPG, PDF, DOCX · ≤ 5 MB)</label>
+      <div class="d-flex gap-2 flex-wrap">
+        <input type="file" name="attachments" id="id_attachments" multiple accept=".png,.jpg,.jpeg,.pdf,.docx" class="form-control mv-file-input" required>
+        <button type="submit" class="mv-btn mv-btn-crimson">Tải lên</button>
+      </div>
+    </form>
+  {% endif %}
+</div>

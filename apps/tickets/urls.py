@@ -16,4 +16,10 @@ urlpatterns = [
     path("<uuid:pk>/assign/", views.ticket_assign_view, name="assign"),
     path("<uuid:pk>/status/", views.ticket_status_view, name="change_status"),
     path("<uuid:pk>/comment/", views.ticket_comment_view, name="add_comment"),
+    path("<uuid:pk>/attachments/", views.ticket_upload_view, name="upload"),
+    path(
+        "attachments/<uuid:pk>/download/",
+        views.attachment_download_view,
+        name="attachment_download",
+    ),
 ]

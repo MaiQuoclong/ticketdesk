@@ -1,0 +1,73 @@
+{% load ticket_tags %}
+<div id="ticket-table">
+  <nav class="mv-tabs" aria-label="Lọc nhanh theo trạng thái">
+    <a href="{% url 'tickets:list' %}" class="mv-tab {% if not current_status %}active{% endif %}">
+      Tất cả ({{ stats.total }})
+    </a>
+    {% for code, label in status_choices %}
+      <a href="{% querystring status=code page=None %}" class="mv-tab {% if current_status == code %}active{% endif %}">
+        {{ label }}
+      </a>
+    {% endfor %}
+  </nav>
+
+  <div class="table-responsive">
+    <table class="mv-table mv-ticket-table">
+      <thead>
+        <tr>
+          <th scope="col">Mã</th>
+          <th scope="col">Tiêu đề</th>
+          <th scope="col">Trạng thái</th>
+          <th scope="col">Ưu tiên</th>
+          <th scope="col">Người xử lý</th>
+          <th scope="col">Ngày tạo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ticket in tickets %}
+          <tr>
+            <td class="text-nowrap"><a href="{% url 'tickets:detail' ticket.pk %}" class="mv-ticket-code">{{ ticket.short_id }}</a></td>
+            <td>
+              <a href="{% url 'tickets:detail' ticket.pk %}" class="mv-ticket-title">{{ ticket.title }}</a>
+              <div class="mv-ticket-meta">
+                <span>{{ ticket.category.name }}</span>
+                <span>Người tạo: {{ ticket.created_by.username }}</span>
+                <span>Bình luận: {{ ticket.comment_count }}</span>
+              </div>
+            </td>
+            <td class="text-nowrap">{{ ticket|status_badge }}</td>
+            <td class="text-nowrap">{{ ticket|priority_badge }}</td>
+            <td class="text-nowrap">{% if ticket.assignee %}{{ ticket.assignee.username }}{% else %}<span class="mv-muted">Chưa gán</span>{% endif %}</td>
+            <td class="text-nowrap">{{ ticket.created_at|date:"d/m/Y H:i" }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="mv-empty">
+              Chưa có ticket nào phù hợp với bộ lọc hiện tại.
+              <div class="mt-3">
+                <a href="{% url 'tickets:create' %}" class="mv-btn mv-btn-crimson">+ Tạo ticket</a>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+    <nav class="mv-pagination" aria-label="Phân trang">
+      <span class="mv-muted">Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} ticket</span>
+      <div class="d-flex gap-2">
+        {% if page_obj.has_previous %}
+          <a href="{% querystring page=page_obj.previous_page_number %}"
+             hx-get="{% querystring page=page_obj.previous_page_number %}" hx-target="#ticket-table" hx-swap="outerHTML" hx-push-url="true" class="mv-btn mv-btn-ghost">← Trước</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+          <a href="{% querystring page=page_obj.next_page_number %}"
+             hx-get="{% querystring page=page_obj.next_page_number %}" hx-target="#ticket-table" hx-swap="outerHTML" hx-push-url="true" class="mv-btn mv-btn-crimson">Tiếp →</a>
+        {% endif %}
+      </div>
+    </nav>
+  {% endif %}
+</div>
+{% if is_htmx %}{% include "tickets/partials/_clear_filter.html" with oob=True %}{% endif %}

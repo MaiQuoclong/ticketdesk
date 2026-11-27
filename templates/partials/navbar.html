@@ -1,0 +1,46 @@
+<header class="mv-navbar">
+  <nav class="navbar navbar-expand-xl navbar-dark mv-navbar-inner" aria-label="Điều hướng chính">
+    <a href="{% url 'tickets:list' %}" class="navbar-brand mv-brand">
+      <span class="mv-brand-badge">TD</span>
+      <span><strong>Ticket</strong>Desk</span>
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Mở menu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="mainNav">
+      {% if user.is_authenticated %}
+        <ul class="navbar-nav mv-nav-menu">
+          <li class="nav-item"><a href="{% url 'tickets:list' %}" class="nav-link mv-nav-link">Danh sách Ticket</a></li>
+          {% if user.role == 'manager' or user.is_staff %}
+            <li class="nav-item"><a href="{% url 'tickets:manage_stats' %}" class="nav-link mv-nav-link">Thống kê</a></li>
+            <li class="nav-item"><a href="{% url 'tickets:manage_users' %}" class="nav-link mv-nav-link">Người dùng &amp; Vai trò</a></li>
+            <li class="nav-item"><a href="{% url 'tickets:manage_categories' %}" class="nav-link mv-nav-link">Danh mục sự cố</a></li>
+            <li class="nav-item"><a href="{% url 'tickets:manage_history' %}" class="nav-link mv-nav-link">Nhật ký hệ thống</a></li>
+            <li class="nav-item"><a href="/admin/" class="nav-link mv-nav-link">Django Admin</a></li>
+          {% endif %}
+        </ul>
+      {% endif %}
+
+      <div class="mv-nav-actions">
+        {% if user.is_authenticated %}
+          <a href="{% url 'tickets:create' %}" class="mv-btn mv-btn-outline-light">+ Tạo Ticket</a>
+          <div class="mv-user-pill" title="{{ user.username }} · {{ user.get_role_display }}">
+            <span class="mv-avatar">{{ user.username|slice:":2" }}</span>
+            <div class="mv-user-info">
+              <span class="mv-user-name">{{ user.username }}</span>
+              <span class="mv-role-tag">{{ user.get_role_display }}</span>
+            </div>
+          </div>
+          <form method="post" action="{% url 'accounts:logout' %}" class="m-0">
+            {% csrf_token %}
+            <button type="submit" class="mv-btn mv-btn-outline-light">Đăng xuất</button>
+          </form>
+        {% else %}
+          <a href="{% url 'accounts:login' %}" class="mv-btn mv-btn-outline-light">Đăng nhập</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+</header>
